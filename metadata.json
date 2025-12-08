@@ -1,0 +1,5 @@
+{
+  "name": "TaskFlow",
+  "description": "A powerful, offline-capable task management application featuring Pomodoro timers, subtasks, cloud synchronization, and detailed analytics. Built with a mobile-first design and dark mode support.",
+  "requestFramePermissions": []
+}
