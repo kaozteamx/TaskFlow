@@ -95,12 +95,19 @@ export const CalendarBoard = ({
     const [visibleProjects, setVisibleProjects] = useState<Record<string, boolean>>({});
     const [isBacklogOpen, setIsBacklogOpen] = useState(true);
     const [isAllDayExpanded, setIsAllDayExpanded] = useState(true);
+    const [now, setNow] = useState(new Date());
     
     // Resize State
     const [resizingTask, setResizingTask] = useState<string | null>(null);
     const [resizeStartY, setResizeStartY] = useState<number>(0);
     const [resizeStartHeight, setResizeStartHeight] = useState<number>(0);
     const [tempHeight, setTempHeight] = useState<number | null>(null);
+
+    // Update current time every minute
+    useEffect(() => {
+        const interval = setInterval(() => setNow(new Date()), 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const initExp: any = {};
@@ -475,6 +482,11 @@ export const CalendarBoard = ({
                                  
                                  // Calculate layout for this specific day
                                  const layouts = calculateDayLayouts(timedTasks);
+                                 
+                                 // Current Time Line Position
+                                 const currentHour = now.getHours();
+                                 const currentMinute = now.getMinutes();
+                                 const currentTimeTop = (currentHour * 60 + currentMinute) * (PIXELS_PER_HOUR / 60);
 
                                  return (
                                      <div key={i} className={`flex flex-col relative ${isDark ? 'divide-zinc-800 border-zinc-800' : 'divide-gray-100 border-gray-100'} ${isToday ? isDark ? 'bg-zinc-900/10' : 'bg-emerald-50/10' : ''}`}>
@@ -484,6 +496,17 @@ export const CalendarBoard = ({
                                             onDragOver={handleDragOver}
                                             onDrop={(e) => handleDropOnDayGrid(e, day)}
                                           >
+                                              {/* Current Time Indicator */}
+                                              {isToday && (
+                                                <div 
+                                                    className="absolute w-full flex items-center z-20 pointer-events-none"
+                                                    style={{ top: `${currentTimeTop}px` }}
+                                                >
+                                                    <div className={`absolute -left-1.5 w-3 h-3 rounded-full bg-[#10B981] border-2 ${isDark ? 'border-[#09090b]' : 'border-white'}`} />
+                                                    <div className="w-full h-[2px] bg-[#10B981]" />
+                                                </div>
+                                              )}
+
                                               {hours.map(h => (
                                                   <div key={h} className={`absolute w-full border-t pointer-events-none ${isDark ? 'border-zinc-800/50' : 'border-gray-100'}`} style={{ top: h * PIXELS_PER_HOUR, height: PIXELS_PER_HOUR }}>
                                                       <div className={`absolute w-full border-t border-dashed pointer-events-none ${isDark ? 'border-zinc-900' : 'border-gray-50'}`} style={{ top: '50%' }} />
