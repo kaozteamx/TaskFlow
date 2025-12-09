@@ -1,28 +1,24 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
-  Layout, Plus, Circle, Trash2, FolderOpen, X, Edit2, CheckCircle2, 
-  Flag, ExternalLink, CloudCog, Download, Upload, Loader2, Calendar as CalendarIcon, 
-  List, PanelLeftClose, PanelLeftOpen, BarChart3, Search, FilterX, StickyNote, Repeat, 
-  ClipboardList, SidebarClose, SidebarOpen, Sun, Moon, FileSpreadsheet, Home,
-  ChevronDown, ChevronRight, Clock
+  Plus, Loader2, Calendar as CalendarIcon, 
+  List, BarChart3, Search, FilterX, StickyNote, Flag, ExternalLink, Clock
 } from 'lucide-react';
 
 // --- Imports from Refactored Modules ---
 import { auth, db, signInAnonymously, onAuthStateChanged, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, writeBatch, getDocs, IS_DEMO, __app_id } from './firebase-setup';
 import { Project, Task, NotificationType } from './types';
 import { 
-  HOME_VIEW, PRIORITIES, RECURRENCE_OPTIONS, TIME_SLOTS, 
-  safeDate, parseLocalDate, formatDate, formatCreationDate, getDaysOpen, isOverdue, 
-  isDueToday, calculateNextDueDate, getEndTime, calculateDuration 
+  HOME_VIEW, safeDate, formatDate, calculateNextDueDate, calculateDuration 
 } from './utils';
 
 // --- Component Imports ---
-import { CustomTimeSelect, NotificationToast, MiniCalendar, PerformanceChart } from './components/ui-elements';
+import { NotificationToast, MiniCalendar, PerformanceChart } from './components/ui-elements';
 import { ConfirmationModal, CloudSyncModal, PomodoroLogModal, ProjectModal } from './components/modals';
 import { TaskNoteModal } from './components/task-note-modal';
-import { PomodoroTimer } from './components/pomodoro-timer';
 import { CalendarBoard } from './components/calendar-board';
 import { TaskItem } from './components/task-item';
+import { Sidebar } from './components/sidebar';
+import { DetailsPanel } from './components/details-panel';
 
 const App = () => {
   const [authUser, setAuthUser] = useState<any>(null);
@@ -138,8 +134,6 @@ const App = () => {
             setEditingTask(null);
         }
     };
-    
-    // Using mousedown for faster response than click, and to match typical "dismiss" behavior
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
         document.removeEventListener('mousedown', handleClickOutside);
@@ -419,7 +413,6 @@ const App = () => {
           const logs = logsSnap.docs.map((d: any) => {
                const data = d.data();
                const dateObj = safeDate(data.createdAt);
-               // Helper to get project name
                const proj = projects.find(p => p.id === data.projectId);
                return {
                    fecha: dateObj ? dateObj.toLocaleDateString('es-ES') : 'N/A',
@@ -554,84 +547,28 @@ const App = () => {
   return (
     <div className={`flex h-screen w-full ${isDark ? 'dark bg-[#09090b] text-zinc-100' : 'bg-white text-gray-900'}`}>
        {/* MAIN SIDEBAR */}
-       <div className={`flex flex-col border-r transition-all duration-300 ${isSidebarExpanded ? 'w-64' : 'w-16'} ${isDark ? 'border-zinc-800 bg-[#09090b]' : 'border-gray-200 bg-gray-50'}`}>
-            <div className="p-4 flex flex-col gap-6">
-                <div className={`flex items-center ${isSidebarExpanded ? 'justify-between' : 'justify-center'}`}>
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-900/20 text-white">
-                            <Layout size={18} />
-                        </div>
-                        {isSidebarExpanded && <span className="font-semibold">TaskFlow</span>}
-                    </div>
-                    <button onClick={() => setIsSidebarExpanded(!isSidebarExpanded)} className={isDark ? 'text-zinc-500 hover:text-white' : 'text-gray-400 hover:text-black'}>
-                        {isSidebarExpanded ? <SidebarClose size={18}/> : <SidebarOpen size={18}/>}
-                    </button>
-                </div>
-                
-                {/* POMODORO TIMER IN SIDEBAR */}
-                <PomodoroTimer isDark={isDark} isSidebarExpanded={isSidebarExpanded} onFocusComplete={handleFocusComplete} />
-
-                <div className="flex flex-col gap-1">
-                    <button onClick={() => { setActiveProject(HOME_VIEW); }} className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${activeProject.id === HOME_VIEW.id ? 'bg-emerald-600/10 text-emerald-500' : isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-200'}`}>
-                        <Home size={20} />
-                        {isSidebarExpanded && <span className="text-sm font-medium">Inicio</span>}
-                    </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto">
-                     {isSidebarExpanded && (
-                        <div className="flex items-center justify-between px-2 mb-2 group">
-                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIsProjectsExpanded(!isProjectsExpanded)}>
-                                <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>Proyectos</span>
-                                {isProjectsExpanded ? <ChevronDown size={14} className="opacity-50"/> : <ChevronRight size={14} className="opacity-50"/>}
-                            </div>
-                            <button onClick={() => openProjectModal(null)} className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500 hover:text-black'}`} title="Nuevo Proyecto">
-                                <Plus size={14} />
-                            </button>
-                        </div>
-                     )}
-                     {(isSidebarExpanded ? isProjectsExpanded : true) && (
-                         <div className="space-y-0.5">
-                             {projects.filter(p => p.id !== HOME_VIEW.id).map(p => (
-                                 <div key={p.id} className="group relative">
-                                     <button onClick={() => setActiveProject(p)} className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${activeProject.id === p.id ? 'bg-emerald-600/10 text-emerald-500' : isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-200'}`}>
-                                         <FolderOpen size={18} className={activeProject.id === p.id ? 'fill-emerald-600/20' : ''} />
-                                         {isSidebarExpanded && <span className="text-sm truncate pr-12">{p.name}</span>}
-                                     </button>
-                                     {isSidebarExpanded && (
-                                         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                             <button onClick={(e) => { e.stopPropagation(); openProjectModal(p); }} className={`p-1.5 rounded ${isDark ? 'text-zinc-500 hover:text-white hover:bg-zinc-700' : 'text-gray-400 hover:text-black hover:bg-gray-300'}`}>
-                                                 <Edit2 size={12} />
-                                             </button>
-                                             <button onClick={(e) => { e.stopPropagation(); handleDeleteProject(p); }} className={`p-1.5 rounded ${isDark ? 'text-zinc-500 hover:text-red-400 hover:bg-red-500/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}>
-                                                 <Trash2 size={12} />
-                                             </button>
-                                         </div>
-                                     )}
-                                 </div>
-                             ))}
-                         </div>
-                     )}
-                </div>
-            </div>
-
-            <div className={`p-4 mt-auto border-t flex flex-col gap-2 ${isDark ? 'border-zinc-800' : 'border-gray-200'}`}>
-                {/* CLOUD / BACKUP / THEME CONTROLS */}
-                <div className={`flex gap-1 justify-center ${!isSidebarExpanded && 'flex-col'}`}>
-                    <button onClick={() => setIsCloudSyncModalOpen(true)} className={`flex items-center justify-center p-2 rounded-lg transition-all ${isDark ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`} title="Sincronización Nube"><CloudCog size={18} /></button>
-                    {isImporting ? (<div className="flex justify-center p-2"><Loader2 size={18} className="animate-spin text-emerald-500" /></div>) : (
-                        <>
-                            <button onClick={handleExportPomodoroCSV} disabled={isExportingCSV} className={`flex items-center justify-center p-2 rounded-lg transition-colors ${isDark ? 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200'}`} title="Reporte CSV Pomodoros">{isExportingCSV ? <Loader2 size={18} className="animate-spin" /> : <FileSpreadsheet size={18} />}</button>
-                            <button onClick={handleExportData} disabled={isBackingUp} className={`flex items-center justify-center p-2 rounded-lg transition-colors ${isDark ? 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200'}`} title="Descargar Backup">{isBackingUp ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}</button>
-                            <label className={`flex items-center justify-center p-2 rounded-lg cursor-pointer transition-colors ${isDark ? 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200'}`} title="Restaurar Backup"><Upload size={18} /><input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleFileSelect} /></label>
-                        </>
-                    )}
-                </div>
-                <button onClick={() => setIsDark(!isDark)} className={`w-full flex items-center justify-center gap-3 p-2 rounded-lg ${isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-200'}`}>
-                    {isDark ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
-            </div>
-       </div>
+       <Sidebar 
+            isSidebarExpanded={isSidebarExpanded}
+            setIsSidebarExpanded={setIsSidebarExpanded}
+            isDark={isDark}
+            setIsDark={setIsDark}
+            activeProject={activeProject}
+            setActiveProject={setActiveProject}
+            projects={projects}
+            isProjectsExpanded={isProjectsExpanded}
+            setIsProjectsExpanded={setIsProjectsExpanded}
+            openProjectModal={openProjectModal}
+            handleDeleteProject={handleDeleteProject}
+            setIsCloudSyncModalOpen={setIsCloudSyncModalOpen}
+            isImporting={isImporting}
+            isExportingCSV={isExportingCSV}
+            handleExportPomodoroCSV={handleExportPomodoroCSV}
+            isBackingUp={isBackingUp}
+            handleExportData={handleExportData}
+            fileInputRef={fileInputRef}
+            handleFileSelect={handleFileSelect}
+            onFocusComplete={handleFocusComplete}
+       />
 
        {/* MAIN CONTENT AREA */}
        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -799,137 +736,18 @@ const App = () => {
             )}
 
             {/* DETAILS PANEL (Global) */}
-            <div ref={detailsPanelRef} className={`absolute inset-y-0 right-0 w-[400px] border-l shadow-2xl transform transition-transform duration-300 z-30 flex flex-col ${editingTask ? 'translate-x-0' : 'translate-x-full'} ${isDark ? 'bg-[#18181b] border-zinc-800' : 'bg-white border-gray-200'}`}>
-              {editingTask && (
-                <>
-                    <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-zinc-800' : 'border-gray-100'}`}>
-                        <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Detalles</span>
-                        <button onClick={() => setEditingTask(null)} className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-zinc-800 text-zinc-400' : 'hover:bg-gray-100 text-gray-400'}`}><X size={18} /></button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                        <div className="flex items-start gap-3 mb-6">
-                            <button onClick={() => handleToggleTask(editingTask)} className={`mt-1 flex-shrink-0 ${editingTask.completed ? 'text-emerald-500' : isDark ? 'text-zinc-600 hover:text-emerald-500' : 'text-gray-400 hover:text-emerald-500'}`}>
-                                {editingTask.completed ? <CheckCircle2 size={24} /> : <Circle size={24} />}
-                            </button>
-                            <textarea 
-                                value={editingTask.title} 
-                                onChange={(e) => handleUpdateTaskDetail('title', e.target.value)} 
-                                className={`w-full bg-transparent text-xl font-semibold border-none outline-none resize-none h-auto min-h-[3rem] p-0 leading-tight ${isDark ? 'text-zinc-100 placeholder-zinc-600' : 'text-gray-800 placeholder-gray-400'}`} 
-                                rows={2} 
-                                placeholder="Título de la tarea" 
-                            />
-                        </div>
-                        
-                        <div className="mb-6">
-                            <label className={`text-[10px] font-bold uppercase mb-2 block ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Prioridad</label>
-                            <div className="flex gap-2">
-                                {['low', 'medium', 'high'].map((level) => { 
-                                    const p = PRIORITIES[level]; 
-                                    const isSelected = editingTask.priority === level; 
-                                    return (
-                                        <button key={level} onClick={() => handleUpdateTaskDetail('priority', level)} className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center justify-center gap-1.5 ${isSelected ? `${p.bg} ${p.color} ${p.border.replace('border-l-4', 'border')}` : `border-transparent ${isDark ? 'bg-zinc-900 text-zinc-500 hover:bg-zinc-800' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}`}>
-                                            <Flag size={12} className={isSelected ? p.iconColor : 'fill-transparent'} /> {p.label}
-                                        </button>
-                                    ); 
-                                })}
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 mb-8">
-                            <div className={`p-3 rounded-lg border ${isDark ? 'bg-zinc-900/50 border-zinc-800/50' : 'bg-gray-50 border-gray-100'}`}>
-                                <label className={`text-[10px] font-bold uppercase mb-2 flex items-center gap-1 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
-                                    <CalendarIcon size={10} /> Fecha & Horario
-                                </label>
-                                <div className="space-y-3">
-                                    <input 
-                                        type="date" 
-                                        value={editingTask.dueDate || ''} 
-                                        onChange={(e) => handleUpdateTaskDetail('dueDate', e.target.value)} 
-                                        className={`bg-transparent text-xs w-full outline-none font-medium ${isDark ? 'text-zinc-200 [color-scheme:dark]' : 'text-gray-700 [color-scheme:light]'}`} 
-                                    />
-                                    <div className={`pt-2 border-t flex items-center justify-between ${isDark ? 'border-zinc-800' : 'border-gray-200'}`}>
-                                        <div className="flex flex-col gap-0.5 relative">
-                                             <label className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>inicio</label>
-                                             <CustomTimeSelect 
-                                                value={editingTask.dueTime}
-                                                onChange={(val: string) => handleUpdateTaskDetail('dueTime', val)}
-                                                options={TIME_SLOTS}
-                                                isDark={isDark}
-                                                placeholder="--:--"
-                                             />
-                                        </div>
-                                        <span className={`mb-auto mt-6 ${isDark ? 'text-zinc-700' : 'text-gray-300'}`}>-</span>
-                                        <div className="flex flex-col gap-0.5">
-                                            <label className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>fin</label>
-                                            <CustomTimeSelect 
-                                                value={getEndTime(editingTask.dueTime || '00:00', editingTask.duration || 60)}
-                                                onChange={(val: string) => {
-                                                    const newDuration = calculateDuration(editingTask.dueTime || '00:00', val);
-                                                    handleUpdateTaskDetail('duration', newDuration);
-                                                }}
-                                                options={TIME_SLOTS}
-                                                isDark={isDark}
-                                                disabled={!editingTask.dueTime}
-                                                placeholder="--:--"
-                                             />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className={`p-3 rounded-lg border ${isDark ? 'bg-zinc-900/50 border-zinc-800/50' : 'bg-gray-50 border-gray-100'}`}>
-                                <label className={`text-[10px] font-bold uppercase mb-2 flex items-center gap-1 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
-                                    <Repeat size={10} /> Repetir
-                                </label>
-                                <select value={editingTask.recurrence || ''} onChange={(e) => handleUpdateTaskDetail('recurrence', e.target.value)} className={`bg-transparent text-xs w-full outline-none appearance-none mt-1 ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>
-                                    {Object.entries(RECURRENCE_OPTIONS).map(([key, opt]) => (<option key={key} value={opt.value} className={isDark ? 'bg-zinc-900' : 'bg-white'}>{opt.label}</option>))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="mb-8">
-                            <div className="flex items-center justify-between mb-2">
-                                <label className={`text-[10px] font-bold uppercase ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Notas / Descripción</label>
-                                 <button
-                                    onClick={() => setChecklistModalTask(editingTask)}
-                                    className={`text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1.5 transition-colors ${isDark ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-black'}`}
-                                >
-                                    <ClipboardList size={12} /> Abrir Editor Avanzado
-                                </button>
-                            </div>
-                            <textarea value={editingTask.description} onChange={(e) => handleUpdateTaskDetail('description', e.target.value)} className={`w-full rounded-lg p-3 outline-none border transition-colors min-h-[100px] text-sm resize-none ${isDark ? 'bg-zinc-900/50 border-zinc-800/50 text-zinc-300 placeholder-zinc-600 focus:border-emerald-500/50' : 'bg-gray-50 border-gray-100 text-gray-700 placeholder-gray-400 focus:border-emerald-400'}`} placeholder="Añadir descripción..." />
-                        </div>
-                        
-                        <div>
-                            <div className="flex items-center justify-between mb-3">
-                                <label className={`text-[10px] font-bold uppercase ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Subtareas</label>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-gray-100 text-gray-500'}`}>{currentTaskSubtasks.length}</span>
-                            </div>
-                            <div className="space-y-1 mb-3">
-                                {currentTaskSubtasks.map(sub => (
-                                    <div key={sub.id} className={`group flex items-center gap-2 p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-zinc-800/50' : 'hover:bg-gray-50'}`}>
-                                        <button onClick={() => handleToggleTask(sub)} className={`${sub.completed ? 'text-emerald-500' : isDark ? 'text-zinc-600 hover:text-emerald-500' : 'text-gray-400 hover:text-emerald-500'}`}>
-                                            {sub.completed ? <CheckCircle2 size={16} /> : <Circle size={16} />}
-                                        </button>
-                                        <span className={`text-sm flex-1 ${sub.completed ? isDark ? 'text-zinc-600 line-through' : 'text-gray-400 line-through' : isDark ? 'text-zinc-300' : 'text-gray-700'}`}>{sub.title}</span>
-                                        <button onClick={() => handleDeleteTask(sub.id)} className={`p-1.5 rounded opacity-0 group-hover:opacity-100 ${isDark ? 'text-zinc-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}><Trash2 size={12} /></button>
-                                    </div>
-                                ))}
-                            </div>
-                            <form onSubmit={handleAddSubtask} className={`flex items-center gap-2 text-sm pl-2 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
-                                <Plus size={16} />
-                                <input name="subtaskTitle" placeholder="Añadir paso..." className={`bg-transparent outline-none flex-1 py-2 ${isDark ? 'placeholder-zinc-600 text-zinc-300' : 'placeholder-gray-400 text-gray-700'}`} autoComplete="off" />
-                            </form>
-                        </div>
-                    </div>
-                    
-                    {/* CREATION DATE FOOTER */}
-                    <div className={`p-4 border-t text-xs flex justify-between items-center ${isDark ? 'border-zinc-800 text-zinc-600' : 'border-gray-100 text-gray-400'}`}>
-                        <span>Creado el {formatCreationDate(editingTask.createdAt)}</span>
-                        <button onClick={() => handleDeleteTask(editingTask.id)} className="text-red-400 hover:text-red-300 flex items-center gap-2 px-3 py-1.5 hover:bg-red-500/10 rounded transition-colors"><Trash2 size={14} /> Eliminar</button>
-                    </div>
-                </>
-              )}
-            </div>
+            <DetailsPanel 
+                editingTask={editingTask}
+                setEditingTask={setEditingTask}
+                isDark={isDark}
+                handleToggleTask={handleToggleTask}
+                handleUpdateTaskDetail={handleUpdateTaskDetail}
+                handleDeleteTask={handleDeleteTask}
+                currentTaskSubtasks={currentTaskSubtasks}
+                handleAddSubtask={handleAddSubtask}
+                setChecklistModalTask={setChecklistModalTask}
+                panelRef={detailsPanelRef}
+            />
        </div>
        <NotificationToast notification={notification} onClose={() => setNotification(null)} />
        <CloudSyncModal isOpen={isCloudSyncModalOpen} onClose={() => setIsCloudSyncModalOpen(false)} currentUserId={userId} isCustom={!!customUid} onSetCustomId={handleSetCustomId} onClearCustomId={handleClearCustomId} isDark={isDark} onActivateCloudMode={handleActivateCloudMode} />

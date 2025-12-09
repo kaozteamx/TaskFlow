@@ -10,11 +10,10 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
       },
       plugins: [react()],
-define: {
-      // Esto conecta la variable nueva de Vercel (VITE_) con la variable vieja de tu código
-      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY),
-      'process.env.API_KEY': JSON.stringify(process.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY),
-    },
+      define: {
+        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
