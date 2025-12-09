@@ -145,9 +145,14 @@ export const DetailsPanel = ({
                     </div>
                 </div>
                 
-                {/* CREATION DATE FOOTER */}
+                {/* CREATION/COMPLETION DATE FOOTER */}
                 <div className={`p-4 border-t text-xs flex justify-between items-center ${isDark ? 'border-zinc-800 text-zinc-600' : 'border-gray-100 text-gray-400'}`}>
-                    <span>Creado el {formatCreationDate(editingTask.createdAt)}</span>
+                    <div className="flex flex-col gap-0.5">
+                        <span>Creado el {formatCreationDate(editingTask.createdAt)}</span>
+                        {editingTask.completed && editingTask.completedAt && (
+                            <span className="text-emerald-500 font-medium">Completado el {formatCreationDate(editingTask.completedAt)}</span>
+                        )}
+                    </div>
                     <button onClick={() => handleDeleteTask(editingTask.id)} className="text-red-400 hover:text-red-300 flex items-center gap-2 px-3 py-1.5 hover:bg-red-500/10 rounded transition-colors"><Trash2 size={14} /> Eliminar</button>
                 </div>
             </>

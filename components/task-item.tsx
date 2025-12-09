@@ -2,7 +2,7 @@ import React from 'react';
 import { GripVertical, CheckCircle2, Circle, Flag, Repeat, ClipboardList, Edit2, Trash2, AlignLeft } from 'lucide-react';
 import { Task } from '../types';
 import { PRIORITIES } from '../utils';
-import { isOverdue, isDueToday, getDaysOpen, formatDate } from '../utils';
+import { isOverdue, isDueToday, getDaysOpen, formatDate, safeDate } from '../utils';
 
 export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjectName, onOpenChecklist, onToggleReview }: {
     task: Task, onToggle: any, onClick: any, onDelete: any, isDark: boolean, showProjectName: string | null, onOpenChecklist: any, onToggleReview: any
@@ -22,6 +22,9 @@ export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjec
                           lastReviewedDate.getDate() === today.getDate() &&
                           lastReviewedDate.getMonth() === today.getMonth() &&
                           lastReviewedDate.getFullYear() === today.getFullYear();
+                          
+  // Completion Date Logic
+  const completedDate = task.completed && task.completedAt ? safeDate(task.completedAt) : null;
 
   return (
     <div 
@@ -46,7 +49,17 @@ export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjec
             <div className="flex items-center gap-2">
                 {task.priority && task.priority !== 'none' && (<span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 border ${priorityStyle.bg} ${priorityStyle.color} border-transparent`}><Flag size={10} className={priorityStyle.iconColor} />{priorityStyle.label}</span>)}
                 {showProjectName && (<span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 border ${isDark ? 'bg-zinc-800 text-zinc-400 border-zinc-700' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>{showProjectName}</span>)}
+                
+                {/* Due Date Badge (Only if not completed) */}
                 {task.dueDate && !task.completed && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 border ${overdue ? 'bg-red-500/10 text-red-500 border-red-500/20' : dueToday ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : isDark ? 'bg-zinc-800 text-zinc-500 border-zinc-700' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>{formatDate(task.dueDate)} {task.dueTime && <span className="opacity-70 ml-1">{task.dueTime}</span>}</span>}
+                
+                {/* Completion Date Badge (Only if completed) */}
+                {completedDate && (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 border ${isDark ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`} title={`Completado: ${completedDate.toLocaleString()}`}>
+                        <CheckCircle2 size={10} /> {completedDate.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })}
+                    </span>
+                )}
+
                 {daysOpen > 0 && !task.completed && (
                     <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold border ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`} title="Días desde creación">
                         {daysOpen}d
