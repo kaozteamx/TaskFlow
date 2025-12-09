@@ -4,15 +4,22 @@ import { Task } from '../types';
 import { PRIORITIES } from '../utils';
 import { isOverdue, isDueToday, getDaysOpen, formatDate, safeDate } from '../utils';
 
-export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjectName, onOpenChecklist, onToggleReview }: {
-    task: Task, onToggle: any, onClick: any, onDelete: any, isDark: boolean, showProjectName: string | null, onOpenChecklist: any, onToggleReview: any
+export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjectName, onOpenChecklist, onToggleReview, subtasksCount, subtasksCompletedCount }: {
+    task: Task, onToggle: any, onClick: any, onDelete: any, isDark: boolean, showProjectName: string | null, onOpenChecklist: any, onToggleReview: any, subtasksCount?: number, subtasksCompletedCount?: number
 }) => {
   const overdue = !task.completed && isOverdue(task.dueDate);
   const dueToday = !task.completed && isDueToday(task.dueDate);
   const priorityStyle = PRIORITIES[task.priority] || PRIORITIES['none'];
   const noteContent = task.noteContent || '';
-  const totalChecks = (noteContent.match(/\[ \]|\[x\]/g) || []).length;
-  const completedChecks = (noteContent.match(/\[x\]/g) || []).length;
+  
+  // Counts from Markdown Notes
+  const noteTotalChecks = (noteContent.match(/\[ \]|\[x\]/g) || []).length;
+  const noteCompletedChecks = (noteContent.match(/\[x\]/g) || []).length;
+  
+  // Combine with Real Child Subtasks
+  const totalSubitems = noteTotalChecks + (subtasksCount || 0);
+  const completedSubitems = noteCompletedChecks + (subtasksCompletedCount || 0);
+
   const daysOpen = getDaysOpen(task.createdAt);
   
   // Calculate if reviewed today
@@ -70,9 +77,9 @@ export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjec
                         <Repeat size={10} />
                     </div>
                 )}
-                {totalChecks > 0 && (
+                {totalSubitems > 0 && (
                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 border ${isDark ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-purple-50 text-purple-600 border-purple-100'}`}>
-                       <ClipboardList size={10} /> {completedChecks}/{totalChecks}
+                       <ClipboardList size={10} /> {completedSubitems}/{totalSubitems}
                    </span>
                 )}
             </div>

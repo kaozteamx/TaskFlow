@@ -710,7 +710,10 @@ const App = () => {
                                     <p>No hay tareas que coincidan</p>
                                 </div>
                             )}
-                            {activeRootTasks.filter(t=>!t.completed).map(t => (
+                            {activeRootTasks.filter(t=>!t.completed).map(t => {
+                                const subtasks = tasks.filter(sub => sub.parentTaskId === t.id);
+                                const completedSubCount = subtasks.filter(sub => sub.completed).length;
+                                return (
                                 <TaskItem 
                                     key={t.id} 
                                     task={t} 
@@ -721,12 +724,17 @@ const App = () => {
                                     showProjectName={activeProject.id === HOME_VIEW.id ? projects.find(p=>p.id===t.projectId)?.name : null}
                                     onOpenChecklist={setChecklistModalTask}
                                     onToggleReview={handleToggleReview}
+                                    subtasksCount={subtasks.length}
+                                    subtasksCompletedCount={completedSubCount}
                                 />
-                            ))}
+                            )})}
                             {activeRootTasks.filter(t=>t.completed).length > 0 && (
                                 <div className="pt-6">
                                     <h3 className={`text-xs font-bold uppercase tracking-wider mb-4 ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>Completado</h3>
-                                    {activeRootTasks.filter(t=>t.completed).map(t => (
+                                    {activeRootTasks.filter(t=>t.completed).map(t => {
+                                        const subtasks = tasks.filter(sub => sub.parentTaskId === t.id);
+                                        const completedSubCount = subtasks.filter(sub => sub.completed).length;
+                                        return (
                                         <TaskItem 
                                             key={t.id} 
                                             task={t} 
@@ -737,8 +745,10 @@ const App = () => {
                                             showProjectName={activeProject.id === HOME_VIEW.id ? projects.find(p=>p.id===t.projectId)?.name : null}
                                             onOpenChecklist={setChecklistModalTask}
                                             onToggleReview={handleToggleReview}
+                                            subtasksCount={subtasks.length}
+                                            subtasksCompletedCount={completedSubCount}
                                         />
-                                    ))}
+                                    )})}
                                 </div>
                             )}
                          </div>
