@@ -158,7 +158,7 @@ export const CalendarBoard = ({
     tasks, 
     projects, 
     onUpdateTask, 
-    onUpdateTaskTime,
+    onUpdateTaskTime, 
     isDark, 
     onEditTask,
 }: { 
@@ -222,7 +222,14 @@ export const CalendarBoard = ({
     const handleDragStart = (e: React.DragEvent, taskId: string) => {
         e.stopPropagation(); // Prevent bubbling to container
         setDraggingTaskId(taskId);
+        
+        // Calculate the offset from the top of the card
+        const target = e.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
+        const grabOffsetY = e.clientY - rect.top;
+
         e.dataTransfer.setData("taskId", taskId);
+        e.dataTransfer.setData("grabOffsetY", grabOffsetY.toString());
         e.dataTransfer.effectAllowed = "move";
     };
 
@@ -257,11 +264,23 @@ export const CalendarBoard = ({
     const handleDropOnDayGrid = (e: React.DragEvent, date: Date) => {
         e.preventDefault();
         const taskId = e.dataTransfer.getData("taskId");
+        // Get the offset stored during dragStart
+        const grabOffsetStr = e.dataTransfer.getData("grabOffsetY");
+        const grabOffsetY = grabOffsetStr ? parseFloat(grabOffsetStr) : 0;
+
         if(taskId) {
             const rect = e.currentTarget.getBoundingClientRect();
-            const offsetY = e.clientY - rect.top;
+            // Mouse position relative to the grid
+            const mouseInGridY = e.clientY - rect.top;
             
-            const totalMinutes = (offsetY / PIXELS_PER_HOUR) * 60;
+            // Calculate where the TOP of the card is
+            // (Mouse Position) - (Distance from mouse to top of card)
+            const taskTopY = mouseInGridY - grabOffsetY;
+            
+            // Prevent dropping 'above' the day (negative time)
+            const safeY = Math.max(0, taskTopY);
+            
+            const totalMinutes = (safeY / PIXELS_PER_HOUR) * 60;
             const snappedMinutes = Math.floor(totalMinutes / 15) * 15;
             
             const hours = Math.floor(snappedMinutes / 60);

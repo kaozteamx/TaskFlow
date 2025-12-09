@@ -77,12 +77,18 @@ export const PomodoroTimer = ({ isDark, isSidebarExpanded, onFocusComplete }: an
     };
     
     const resetTimer = () => {
+        // If manually stopped during focus, save the elapsed time
         if (mode === 'focus' && timeLeft < customFocus * 60) {
             const elapsedSeconds = (customFocus * 60) - timeLeft;
-            const minutesLogged = Math.round(elapsedSeconds / 60);
-            if (minutesLogged > 0 && onFocusCompleteRef.current) onFocusCompleteRef.current(minutesLogged);
+            // Use Math.ceil so even partial minutes count when stopped manually
+            const minutesLogged = Math.ceil(elapsedSeconds / 60);
+            if (minutesLogged > 0 && onFocusCompleteRef.current) {
+                onFocusCompleteRef.current(minutesLogged);
+            }
         }
-        setIsActive(false); setMode('focus'); setTimeLeft(customFocus * 60);
+        setIsActive(false); 
+        setMode('focus'); 
+        setTimeLeft(customFocus * 60);
     };
 
     const formatTime = (seconds: number) => { const m = Math.floor(seconds / 60); const s = seconds % 60; return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`; };

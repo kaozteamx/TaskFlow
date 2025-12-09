@@ -233,6 +233,21 @@ const App = () => {
           }
       });
   };
+
+  const handleToggleReview = async (task: Task) => {
+      const ref = userId ? getCollectionRef('tasks') : collection(db, 'tasks');
+      const now = new Date();
+      const todayString = now.toDateString(); // "Mon Dec 08 2025"
+      
+      const lastReview = task.lastReviewedAt ? new Date(task.lastReviewedAt).toDateString() : null;
+      
+      // If already reviewed today, toggle OFF (null). If not reviewed today, toggle ON (ISO string)
+      const newReviewDate = lastReview === todayString ? null : now.toISOString();
+
+      await updateDoc(doc(ref, task.id), { 
+          lastReviewedAt: newReviewDate
+      });
+  };
   
   const handleQuickAddTask = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -705,6 +720,7 @@ const App = () => {
                                     isDark={isDark} 
                                     showProjectName={activeProject.id === HOME_VIEW.id ? projects.find(p=>p.id===t.projectId)?.name : null}
                                     onOpenChecklist={setChecklistModalTask}
+                                    onToggleReview={handleToggleReview}
                                 />
                             ))}
                             {activeRootTasks.filter(t=>t.completed).length > 0 && (
@@ -720,6 +736,7 @@ const App = () => {
                                             isDark={isDark} 
                                             showProjectName={activeProject.id === HOME_VIEW.id ? projects.find(p=>p.id===t.projectId)?.name : null}
                                             onOpenChecklist={setChecklistModalTask}
+                                            onToggleReview={handleToggleReview}
                                         />
                                     ))}
                                 </div>

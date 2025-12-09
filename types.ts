@@ -21,6 +21,7 @@ export interface Task {
     priority: 'high' | 'medium' | 'low' | 'none';
     recurrence: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
     noteContent: string;
+    lastReviewedAt?: string; // ISO String of last review time
     createdAt?: any;
     completedAt?: any;
 }

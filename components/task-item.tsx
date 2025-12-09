@@ -4,8 +4,8 @@ import { Task } from '../types';
 import { PRIORITIES } from '../utils';
 import { isOverdue, isDueToday, getDaysOpen, formatDate } from '../utils';
 
-export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjectName, onOpenChecklist }: {
-    task: Task, onToggle: any, onClick: any, onDelete: any, isDark: boolean, showProjectName: string | null, onOpenChecklist: any
+export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjectName, onOpenChecklist, onToggleReview }: {
+    task: Task, onToggle: any, onClick: any, onDelete: any, isDark: boolean, showProjectName: string | null, onOpenChecklist: any, onToggleReview: any
 }) => {
   const overdue = !task.completed && isOverdue(task.dueDate);
   const dueToday = !task.completed && isDueToday(task.dueDate);
@@ -15,6 +15,14 @@ export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjec
   const completedChecks = (noteContent.match(/\[x\]/g) || []).length;
   const daysOpen = getDaysOpen(task.createdAt);
   
+  // Calculate if reviewed today
+  const lastReviewedDate = task.lastReviewedAt ? new Date(task.lastReviewedAt) : null;
+  const today = new Date();
+  const isReviewedToday = lastReviewedDate && 
+                          lastReviewedDate.getDate() === today.getDate() &&
+                          lastReviewedDate.getMonth() === today.getMonth() &&
+                          lastReviewedDate.getFullYear() === today.getFullYear();
+
   return (
     <div 
         onMouseDown={(e) => e.stopPropagation()}
@@ -23,6 +31,14 @@ export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjec
         className={`group flex items-start gap-4 p-4 rounded-xl border mb-3 cursor-pointer transition-all duration-200 ${priorityStyle.border} ${task.completed ? isDark ? 'bg-zinc-900/30 border-zinc-800/50 opacity-50' : 'bg-gray-50 border-gray-100 opacity-60' : isDark ? 'bg-[#18181b] border-zinc-800 hover:border-zinc-700' : 'bg-white border-gray-200 hover:border-emerald-200'}`}
     >
       <div className={`mt-1 ${isDark ? 'text-zinc-600' : 'text-gray-300'} cursor-move opacity-0 group-hover:opacity-50 hover:opacity-100`}><GripVertical size={16} /></div>
+      
+      {/* Daily Review Dot */}
+      <button 
+        onClick={(e) => { e.stopPropagation(); onToggleReview(task); }}
+        className={`mt-2 w-2 h-2 rounded-full transition-colors ${isReviewedToday ? 'bg-emerald-500' : isDark ? 'bg-zinc-700 hover:bg-zinc-500' : 'bg-gray-300 hover:bg-gray-400'}`}
+        title={isReviewedToday ? "Revisado hoy" : "Marcar como revisado"}
+      />
+
       <button onClick={(e) => { e.stopPropagation(); onToggle(task); }} className={`mt-0.5 flex-shrink-0 transition-colors ${task.completed ? 'text-emerald-500' : overdue ? 'text-red-500' : isDark ? 'text-zinc-600 hover:text-emerald-500' : 'text-gray-400 hover:text-emerald-500'}`}>{task.completed ? <CheckCircle2 size={24} /> : <Circle size={24} />}</button>
       <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
         <div className="flex items-center gap-3 flex-wrap">
