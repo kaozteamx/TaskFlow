@@ -81,9 +81,9 @@ export const DetailsPanel = ({
                                     />
                                     <span className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>-</span>
                                     <CustomTimeSelect 
-                                        value={getEndTime(editingTask.dueTime || '00:00', editingTask.duration || 60)}
+                                        value={getEndTime(editingTask.dueTime || '08:00', editingTask.duration || 60)}
                                         onChange={(val: string) => {
-                                            const newDuration = calculateDuration(editingTask.dueTime || '00:00', val);
+                                            const newDuration = calculateDuration(editingTask.dueTime || '08:00', val);
                                             handleUpdateTaskDetail('duration', newDuration);
                                         }}
                                         options={TIME_SLOTS}

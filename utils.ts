@@ -114,14 +114,29 @@ export const isDueToday = (dateString: string): boolean => {
   );
 };
 
+// Adjust a date to the next business day (Mon-Fri) if it falls on a weekend
+const adjustToBusinessDay = (date: Date): Date => {
+    const day = date.getDay();
+    if (day === 6) { // Saturday
+        date.setDate(date.getDate() + 2); // Move to Monday
+    } else if (day === 0) { // Sunday
+        date.setDate(date.getDate() + 1); // Move to Monday
+    }
+    return date;
+};
+
 export const calculateNextDueDate = (currentDateStr: string, recurrenceType: string): string | null => {
     let baseDate = currentDateStr ? parseLocalDate(currentDateStr) : new Date();
     if (!baseDate) baseDate = new Date();
     const nextDate = new Date(baseDate);
 
     switch (recurrenceType) {
-        case 'daily': nextDate.setDate(baseDate.getDate() + 1); break;
-        case 'weekly': nextDate.setDate(baseDate.getDate() + 7); break;
+        case 'daily': 
+            nextDate.setDate(baseDate.getDate() + 1); 
+            break;
+        case 'weekly': 
+            nextDate.setDate(baseDate.getDate() + 7); 
+            break;
         case 'monthly': 
             const d = baseDate.getDate();
             nextDate.setMonth(baseDate.getMonth() + 1); 
@@ -129,13 +144,18 @@ export const calculateNextDueDate = (currentDateStr: string, recurrenceType: str
                  nextDate.setDate(0); 
             }
             break;
-        case 'yearly': nextDate.setFullYear(baseDate.getFullYear() + 1); break;
+        case 'yearly': 
+            nextDate.setFullYear(baseDate.getFullYear() + 1); 
+            break;
         default: return null;
     }
     
-    const y = nextDate.getFullYear();
-    const m = String(nextDate.getMonth() + 1).padStart(2, '0');
-    const d = String(nextDate.getDate()).padStart(2, '0');
+    // Apply Business Day Logic
+    const businessDate = adjustToBusinessDay(nextDate);
+    
+    const y = businessDate.getFullYear();
+    const m = String(businessDate.getMonth() + 1).padStart(2, '0');
+    const d = String(businessDate.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
 };
 

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, memo } from 'react';
-import { ChevronUp, ChevronDown, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, List, ChevronLeft, ChevronRight, Repeat } from 'lucide-react';
+import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
+import { ChevronUp, ChevronDown, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, List, ChevronLeft, ChevronRight, Repeat, GripVertical, Inbox } from 'lucide-react';
 import { Task, Project } from '../types';
 import { PRIORITIES, getMonday, isDueToday, getEndTime, PROJECT_COLORS, parseLocalDate } from '../utils';
 
@@ -90,14 +90,27 @@ const BacklogTaskCard = memo(({ task, projects, isDark, onDragStart, onEditTask 
             onMouseDown={(e) => e.stopPropagation()}
             onDragStart={(e) => onDragStart(e, task.id)}
             onClick={() => onEditTask(task)}
-            className={`p-2 mb-2 rounded-lg border text-xs cursor-move hover:shadow-md transition-all select-none ${isDark ? 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700' : 'bg-white border-gray-200 hover:border-emerald-300'} ${task.completed ? 'opacity-50' : ''}`}
-            style={isDark ? {} : { borderLeftColor: colorStyle ? colorStyle.dot.replace('bg-', '') : undefined, borderLeftWidth: '4px' }}
+            className={`group relative p-3 mb-2 rounded-xl text-xs cursor-grab active:cursor-grabbing transition-all duration-200 hover:scale-[1.02] select-none shadow-sm border ${
+                isDark 
+                    ? 'bg-zinc-800/40 border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700' 
+                    : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-md'
+            } ${task.completed ? 'opacity-50' : ''}`}
         >
-            <div className="flex items-start gap-2">
-                {isDark && <div className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${colorStyle ? colorStyle.dot : 'bg-zinc-500'}`} />}
-                <span className={`line-clamp-2 ${isDark ? 'text-zinc-200' : 'text-gray-700'} ${task.completed ? 'line-through' : ''}`}>
-                    {task.title}
-                </span>
+            <div className="flex items-start gap-2.5">
+                {/* Drag Handle Indicator */}
+                <div className={`mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity absolute left-1 top-1/2 -translate-y-1/2 ${isDark ? 'text-zinc-600' : 'text-gray-300'}`}>
+                    <GripVertical size={12} />
+                </div>
+
+                <div className="flex-1 pl-2">
+                    <span className={`line-clamp-2 font-medium leading-relaxed ${isDark ? 'text-zinc-300 group-hover:text-zinc-100' : 'text-gray-600 group-hover:text-gray-900'} ${task.completed ? 'line-through' : ''}`}>
+                        {task.title}
+                    </span>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full ${colorStyle ? colorStyle.dot : 'bg-gray-400'}`} />
+                        <span className={`text-[9px] opacity-60 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>{project?.name}</span>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -216,6 +229,7 @@ export const CalendarBoard = ({
     const [isBacklogOpen, setIsBacklogOpen] = useState(true);
     const [isAllDayExpanded, setIsAllDayExpanded] = useState(true);
     const [now, setNow] = useState(new Date());
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     
     // Interaction States
     const [resizingTask, setResizingTask] = useState<string | null>(null);
@@ -225,6 +239,14 @@ export const CalendarBoard = ({
     const [resizeStartY, setResizeStartY] = useState<number>(0);
     const [resizeStartHeight, setResizeStartHeight] = useState<number>(0);
     const [tempHeight, setTempHeight] = useState<number | null>(null);
+
+    // Auto-scroll to 08:00 on mount
+    useEffect(() => {
+        if (scrollContainerRef.current) {
+            // 8 hours * 60 pixels per hour
+            scrollContainerRef.current.scrollTop = 8 * PIXELS_PER_HOUR;
+        }
+    }, []);
 
     // Update current time every minute
     useEffect(() => {
@@ -260,14 +282,14 @@ export const CalendarBoard = ({
 
     const visibleTasks = useMemo(() => tasks.filter(t => visibleProjects[t.projectId]), [tasks, visibleProjects]);
 
-    // Generate Virtual Tasks for Recurrence
+    // Generate Virtual Tasks for Recurrence with Business Day Logic
     const allWeekTasks = useMemo(() => {
         const virtualTasks: Task[] = [];
         // Only process recurrence if we have days
         if (weekDays.length === 0) return visibleTasks;
 
         visibleTasks.forEach(task => {
-            // Must have recurrence, a due date, and not be completed (unless we want to show completed recurrences, but usually next one is separate)
+            // Must have recurrence, a due date, and not be completed
             if (!task.recurrence || task.recurrence === 'none' || !task.dueDate || task.completed) return;
 
             const taskDate = parseLocalDate(task.dueDate);
@@ -285,13 +307,42 @@ export const CalendarBoard = ({
                 let matches = false;
                 
                 if (task.recurrence === 'daily') {
+                    // Daily tasks match every business day
                     matches = true;
                 } else if (task.recurrence === 'weekly') {
+                    // Weekly matches if same day of week.
                     if (day.getDay() === taskDate.getDay()) matches = true;
                 } else if (task.recurrence === 'monthly') {
-                    if (day.getDate() === taskDate.getDate()) matches = true;
+                    const checkDay = day.getDate();
+                    const targetDay = taskDate.getDate();
+
+                    // Direct match
+                    if (checkDay === targetDay) matches = true;
+
+                    // Business Day Shift Check
+                    if (day.getDay() === 1) {
+                        const prevSunday = new Date(day); prevSunday.setDate(checkDay - 1);
+                        const prevSaturday = new Date(day); prevSaturday.setDate(checkDay - 2);
+                        
+                        if (prevSunday.getDate() === targetDay && prevSunday.getMonth() === day.getMonth()) matches = true;
+                        if (prevSaturday.getDate() === targetDay && prevSaturday.getMonth() === day.getMonth()) matches = true;
+                    }
+
                 } else if (task.recurrence === 'yearly') {
-                    if (day.getDate() === taskDate.getDate() && day.getMonth() === taskDate.getMonth()) matches = true;
+                    const checkDay = day.getDate();
+                    const checkMonth = day.getMonth();
+                    const targetDay = taskDate.getDate();
+                    const targetMonth = taskDate.getMonth();
+
+                    if (checkDay === targetDay && checkMonth === targetMonth) matches = true;
+
+                    if (day.getDay() === 1) {
+                         const prevSunday = new Date(day); prevSunday.setDate(checkDay - 1);
+                         const prevSaturday = new Date(day); prevSaturday.setDate(checkDay - 2);
+
+                         if (prevSunday.getDate() === targetDay && prevSunday.getMonth() === targetMonth) matches = true;
+                         if (prevSaturday.getDate() === targetDay && prevSaturday.getMonth() === targetMonth) matches = true;
+                    }
                 }
 
                 if (matches) {
@@ -438,47 +489,55 @@ export const CalendarBoard = ({
             <div 
                 onDragOver={handleDragOver}
                 onDrop={handleDropOnBacklog}
-                className={`transition-all duration-300 flex flex-col border-r flex-shrink-0 ${isBacklogOpen ? 'w-64' : 'w-10'} ${isDark ? 'bg-[#121214] border-zinc-800' : 'bg-gray-50 border-gray-200'}`}
+                className={`transition-all duration-300 ease-in-out flex flex-col border-r flex-shrink-0 z-20 ${isBacklogOpen ? 'w-72' : 'w-12'} ${isDark ? 'bg-[#121214]/50 border-zinc-800' : 'bg-gray-50/50 border-gray-200'}`}
             >
                 {isBacklogOpen ? (
                     <>
-                        <div className={`p-4 border-b flex items-center justify-between ${isDark ? 'border-zinc-800' : 'border-gray-200'}`}>
-                            <h3 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
-                                <List size={14} /> Backlog
+                        {/* Minimalist Header */}
+                        <div className="p-4 flex items-center justify-between">
+                            <h3 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
+                                <Inbox size={14} /> Backlog
                             </h3>
-                            <button onClick={() => setIsBacklogOpen(false)} className={isDark ? 'text-zinc-500 hover:text-white' : 'text-gray-400 hover:text-black'}>
+                            <button onClick={() => setIsBacklogOpen(false)} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'text-zinc-500 hover:text-white hover:bg-zinc-800' : 'text-gray-400 hover:text-black hover:bg-gray-200'}`}>
                                 <PanelLeftClose size={16} />
                             </button>
                         </div>
-                        <div className={`px-4 py-2 border-b text-[10px] ${isDark ? 'border-zinc-800 text-zinc-600' : 'border-gray-200 text-gray-400'}`}>
-                            Arrastra tareas a una hora
-                        </div>
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                        
+                        <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-4">
+                            {/* Empty State Hint */}
+                            <div className={`mb-4 px-2 text-[10px] leading-relaxed ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>
+                                Arrastra las tareas al calendario para agendarlas.
+                            </div>
+
                             {projects.map(proj => {
                                 const projTasks = tasks.filter(t => t.projectId === proj.id && !t.completed && !t.dueDate); 
                                 const colorStyle = PROJECT_COLORS[proj.color || 'gray'];
+                                const isEmpty = projTasks.length === 0;
+
                                 return (
-                                    <div key={proj.id} className="mb-4">
+                                    <div key={proj.id} className="mb-2">
                                         <div 
                                             onClick={() => toggleProject(proj.id)}
-                                            className={`flex items-center justify-between px-2 py-1 mb-1 rounded cursor-pointer group ${isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-200'}`}
+                                            className={`flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${isDark ? 'hover:bg-zinc-800/50' : 'hover:bg-gray-200/50'}`}
                                         >
-                                            <div className="flex items-center gap-2 overflow-hidden">
+                                            <div className="flex items-center gap-2 overflow-hidden opacity-80 group-hover:opacity-100">
                                                 {expandedProjects[proj.id] ? <ChevronUp size={12} className={isDark ? 'text-zinc-500' : 'text-gray-400'} /> : <ChevronDown size={12} className={isDark ? 'text-zinc-500' : 'text-gray-400'} />}
-                                                <div className={`w-2 h-2 rounded-full ${colorStyle.dot}`} />
-                                                <span className={`text-xs font-bold truncate ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>{proj.name}</span>
+                                                <div className={`w-1.5 h-1.5 rounded-full ${colorStyle.dot}`} />
+                                                <span className={`text-xs font-semibold truncate ${isDark ? 'text-zinc-400' : 'text-gray-600'}`}>{proj.name}</span>
+                                                {!isEmpty && <span className={`text-[9px] px-1 rounded ${isDark ? 'bg-zinc-800 text-zinc-500' : 'bg-gray-200 text-gray-500'}`}>{projTasks.length}</span>}
                                             </div>
                                             <button 
                                                 onClick={(e) => toggleProjectVisibility(proj.id, e)}
-                                                className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'text-zinc-500 hover:text-white hover:bg-zinc-700' : 'text-gray-400 hover:text-black hover:bg-gray-300'}`}
+                                                className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'text-zinc-500 hover:text-white' : 'text-gray-400 hover:text-black'}`}
                                                 title={visibleProjects[proj.id] ? "Ocultar en calendario" : "Mostrar en calendario"}
                                             >
                                                 {visibleProjects[proj.id] ? <Eye size={12} /> : <EyeOff size={12} />}
                                             </button>
                                         </div>
+                                        
                                         {expandedProjects[proj.id] && (
-                                            <div className="pl-2 space-y-1">
-                                                {projTasks.length === 0 && <div className={`text-[10px] pl-2 italic ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>Vacío</div>}
+                                            <div className="pl-6 pt-1 space-y-1">
+                                                {isEmpty && <div className={`text-[10px] italic py-1 ${isDark ? 'text-zinc-700' : 'text-gray-300'}`}>Sin tareas pendientes</div>}
                                                 {projTasks.map(t => (
                                                     <BacklogTaskCard 
                                                         key={t.id} 
@@ -497,12 +556,12 @@ export const CalendarBoard = ({
                         </div>
                     </>
                 ) : (
-                    <div className="flex-1 flex flex-col items-center pt-4 gap-4">
-                         <button onClick={() => setIsBacklogOpen(true)} className={isDark ? 'text-zinc-500 hover:text-white' : 'text-gray-400 hover:text-black'}>
+                    <div className="flex-1 flex flex-col items-center pt-6 gap-6">
+                         <button onClick={() => setIsBacklogOpen(true)} className={`p-2 rounded-lg transition-colors ${isDark ? 'text-zinc-500 hover:text-white hover:bg-zinc-800' : 'text-gray-400 hover:text-black hover:bg-gray-200'}`}>
                             <PanelLeftOpen size={20} />
                         </button>
-                        <div className={`writing-vertical-rl text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>
-                            Proyectos
+                        <div className={`writing-vertical-rl text-[10px] font-bold uppercase tracking-wider opacity-50 ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>
+                            Backlog
                         </div>
                     </div>
                 )}
@@ -510,6 +569,7 @@ export const CalendarBoard = ({
 
             {/* MAIN CALENDAR CONTENT (Single Scroll Container for alignment) */}
             <div 
+                ref={scrollContainerRef}
                 className={`flex-1 h-full overflow-y-auto custom-scrollbar relative ${isDark ? 'bg-[#09090b]' : 'bg-white'}`}
                 onDragEnd={handleDragEnd} // Global drag end handler
             >

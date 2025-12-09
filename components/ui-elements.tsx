@@ -18,8 +18,9 @@ export const CustomTimeSelect = ({ value, onChange, options, isDark, disabled, p
     }, []);
 
     useEffect(() => {
-        if(isOpen && value) {
-            const el = document.getElementById(`time-opt-${value}`);
+        if(isOpen) {
+            const target = value || '08:00';
+            const el = document.getElementById(`time-opt-${target}`);
             el?.scrollIntoView({ block: 'center' });
         }
     }, [isOpen, value]);
