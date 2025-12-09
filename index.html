@@ -34,7 +34,6 @@
         }
     </script>
     <style>
-        /* Custom Scrollbar for a cleaner look */
         .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -50,29 +49,22 @@
             background-color: rgba(156, 163, 175, 0.5);
         }
     </style>
-    <!-- MOCK CONFIGURATION for Demo Purposes -->
+    <!-- Configuración Inicial Segura -->
     <script>
-      // In a real deployment, these are injected by the server or build process.
-      // We provide placeholders here so the app initializes without crashing.
-      window.__firebase_config = JSON.stringify({
-        apiKey: "demo-key",
-        authDomain: "demo.firebaseapp.com",
-        projectId: "demo-project",
-        storageBucket: "demo.appspot.com",
-        messagingSenderId: "123456789",
-        appId: "1:123456789:web:abcdef"
-      });
+      // Establecer valores por defecto para evitar crash si no se reemplazan
+      window.__firebase_config = JSON.stringify({ apiKey: "demo-key" });
       window.__app_id = "taskflow-demo";
-      // Mock auth token if needed
-      window.__initial_auth_token = "";
     </script>
   <script type="importmap">
 {
   "imports": {
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.2",
+    "vite": "https://aistudiocdn.com/vite@^7.2.7",
     "react/": "https://aistudiocdn.com/react@^19.2.1/",
     "react": "https://aistudiocdn.com/react@^19.2.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
     "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
   }
 }
@@ -80,5 +72,6 @@
 </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

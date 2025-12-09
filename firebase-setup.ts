@@ -23,11 +23,26 @@ import {
 // --- Globals via Window (injected in index.html) ---
 declare const window: any;
 const __firebase_config = window.__firebase_config;
-export const __app_id = window.__app_id;
+export const __app_id = window.__app_id || 'taskflow-app';
 
-// --- Configuration & Mock Detection ---
-const firebaseConfig = JSON.parse(__firebase_config);
-export const IS_DEMO = firebaseConfig.apiKey === "demo-key" || !firebaseConfig.apiKey;
+// --- Safe Configuration Parsing ---
+let firebaseConfig: any = null;
+let isDemoMode = true;
+
+try {
+    if (__firebase_config) {
+        firebaseConfig = JSON.parse(__firebase_config);
+        // Check if it's a real config or a placeholder
+        if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "demo-key" && firebaseConfig.projectId && firebaseConfig.projectId !== "demo-project") {
+            isDemoMode = false;
+        }
+    }
+} catch (e) {
+    console.warn("Error parsing Firebase config, falling back to Demo Mode", e);
+    isDemoMode = true;
+}
+
+export const IS_DEMO = isDemoMode;
 
 // --- Mock Infrastructure (LocalStorage) ---
 const getStore = () => JSON.parse(localStorage.getItem('taskflow_db') || '{}');
@@ -51,7 +66,7 @@ const mockAuthImpl = {
         return { user };
     },
     onAuthStateChanged: (auth: any, cb: any) => {
-        cb(auth.currentUser);
+        cb(auth.currentUser || { uid: 'demo-user', isAnonymous: true }); // Auto-login in demo
         const handler = () => cb(auth.currentUser);
         window.addEventListener('taskflow_auth_change', handler);
         return () => window.removeEventListener('taskflow_auth_change', handler);
@@ -160,27 +175,45 @@ let app, auth: any, db: any;
 let signInAnonymously: any, signInWithCustomToken: any, onAuthStateChanged: any;
 let collection: any, addDoc: any, updateDoc: any, deleteDoc: any, doc: any, onSnapshot: any, query: any, serverTimestamp: any, writeBatch: any, getDocs: any;
 
-if (!IS_DEMO) {
+if (!IS_DEMO && firebaseConfig) {
     try {
+        console.log("TaskFlow: Initializing Real Firebase...");
         app = initializeApp(firebaseConfig);
         auth = getAuth(app);
         db = getFirestore(app);
+        
+        signInAnonymously = fbSignInAnonymously;
+        signInWithCustomToken = fbSignInWithCustomToken;
+        onAuthStateChanged = fbOnAuthStateChanged;
+        collection = fbCollection;
+        addDoc = fbAddDoc;
+        updateDoc = fbUpdateDoc;
+        deleteDoc = fbDeleteDoc;
+        doc = fbDoc;
+        onSnapshot = fbOnSnapshot;
+        query = fbQuery;
+        serverTimestamp = fbServerTimestamp;
+        writeBatch = fbWriteBatch;
+        getDocs = fbGetDocs;
     } catch (e) {
-        console.error("Firebase Init Failed", e);
+        console.error("Firebase Init Failed, falling back to mock", e);
+        // Fallback logic duplicated below
+        auth = { currentUser: null };
+        db = { type: 'mock_db' };
+        signInAnonymously = mockAuthImpl.signInAnonymously;
+        signInWithCustomToken = mockAuthImpl.signInWithCustomToken;
+        onAuthStateChanged = mockAuthImpl.onAuthStateChanged;
+        collection = mockFirestoreImpl.collection;
+        addDoc = mockFirestoreImpl.addDoc;
+        updateDoc = mockFirestoreImpl.updateDoc;
+        deleteDoc = mockFirestoreImpl.deleteDoc;
+        doc = mockFirestoreImpl.doc;
+        onSnapshot = mockFirestoreImpl.onSnapshot;
+        query = mockFirestoreImpl.query;
+        serverTimestamp = mockFirestoreImpl.serverTimestamp;
+        writeBatch = mockFirestoreImpl.writeBatch;
+        getDocs = mockFirestoreImpl.getDocs;
     }
-    signInAnonymously = fbSignInAnonymously;
-    signInWithCustomToken = fbSignInWithCustomToken;
-    onAuthStateChanged = fbOnAuthStateChanged;
-    collection = fbCollection;
-    addDoc = fbAddDoc;
-    updateDoc = fbUpdateDoc;
-    deleteDoc = fbDeleteDoc;
-    doc = fbDoc;
-    onSnapshot = fbOnSnapshot;
-    query = fbQuery;
-    serverTimestamp = fbServerTimestamp;
-    writeBatch = fbWriteBatch;
-    getDocs = fbGetDocs;
 } else {
     console.log("TaskFlow: Demo Mode Active (LocalStorage)");
     auth = { currentUser: null };
