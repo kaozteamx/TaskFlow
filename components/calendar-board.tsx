@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, memo } from 'react';
-import { ChevronUp, ChevronDown, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronUp, ChevronDown, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, List, ChevronLeft, ChevronRight, Repeat } from 'lucide-react';
 import { Task, Project } from '../types';
-import { PRIORITIES, getMonday, isDueToday, getEndTime, PROJECT_COLORS } from '../utils';
+import { PRIORITIES, getMonday, isDueToday, getEndTime, PROJECT_COLORS, parseLocalDate } from '../utils';
 
 // Helper to calculate minutes for layout logic
 const getMinutes = (time: string) => {
@@ -111,15 +111,10 @@ const TimeGridTask = memo(({ task, layout, projects, isDark, resizingTask, dragg
     }
     let height = (task.duration || 60) * (PIXELS_PER_HOUR / 60);
     
-    // We handle tempHeight via resizingTask in the parent, but for smooth visual updates, 
-    // the parent needs to pass the explicit height or we calculate it. 
-    // *Simplified here:* The parent will trigger a re-render if resizing, so standard props work.
-    // However, we need to know if WE are the one being resized to use the dynamic height from parent state if we wanted to pass it down.
-    // In this implementation, we'll keep it simple: props update, we render.
-
     const project = projects.find((p: any) => p.id === task.projectId);
     const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
     const isDragging = draggingTaskId === task.id;
+    const isVirtual = task.id.includes('_virtual_');
 
     // Determine Layout Style
     const layoutStyle: React.CSSProperties = {
@@ -128,28 +123,47 @@ const TimeGridTask = memo(({ task, layout, projects, isDark, resizingTask, dragg
         left: layout ? `${layout.left}%` : '2px',
         width: layout ? `calc(${layout.width}% - 2px)` : 'calc(100% - 4px)',
         zIndex: resizingTask === task.id ? 50 : (isDragging ? 40 : 10),
-        opacity: isDragging ? 0.5 : (task.completed ? 0.6 : 1)
+        opacity: isDragging ? 0.5 : (task.completed ? 0.6 : isVirtual ? 0.7 : 1)
+    };
+
+    const handleEdit = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        // If it's virtual, we edit the original task (logic handled by passing the task object which contains original data but modified ID)
+        // We strip the ID to pass the original one if needed, but the main app finds task by ID.
+        // Quick fix: The main App looks up by ID. Virtual ID won't be found.
+        // We need to pass a task object with the REAL ID.
+        if (isVirtual) {
+            const realId = task.id.split('_virtual_')[0];
+            onEditTask({ ...task, id: realId });
+        } else {
+            onEditTask(task);
+        }
     };
 
     return (
         <div
-            draggable={resizingTask !== task.id}
+            draggable={!isVirtual && resizingTask !== task.id}
             onMouseDown={(e) => e.stopPropagation()}
-            onDragStart={(e) => onDragStart(e, task.id)}
-            onClick={(e) => { e.stopPropagation(); onEditTask(task); }}
+            onDragStart={(e) => !isVirtual && onDragStart(e, task.id)}
+            onClick={handleEdit}
             style={layoutStyle}
-            className={`absolute rounded border text-[10px] select-none group overflow-hidden flex flex-col ${colorStyle.bg} ${colorStyle.border} ${resizingTask ? 'pointer-events-none' : ''}`}
+            className={`absolute rounded border text-[10px] select-none group overflow-hidden flex flex-col ${colorStyle.bg} ${isVirtual ? 'border-dashed' : ''} ${colorStyle.border} ${resizingTask ? 'pointer-events-none' : ''}`}
         >
             <div className="pl-2 pr-1 py-1 flex-1 min-h-0">
-                <div className={`font-bold truncate leading-tight ${colorStyle.text}`}>{task.title}</div>
+                <div className={`font-bold truncate leading-tight flex items-center gap-1 ${colorStyle.text}`}>
+                    {task.title}
+                    {isVirtual && <Repeat size={8} className="opacity-70" />}
+                </div>
                 {height > 30 && <div className={`truncate opacity-70 ${colorStyle.text}`}>{task.dueTime} - {getEndTime(task.dueTime || '00:00', task.duration || 60)}</div>}
             </div>
-            <div 
-                onMouseDown={(e) => onResizeStart(e, task.id, task.duration || 60)}
-                className="h-2 w-full cursor-s-resize absolute bottom-0 left-0 flex justify-center items-end opacity-0 group-hover:opacity-100 bg-black/5 dark:bg-white/10 pointer-events-auto"
-            >
-                 <div className="w-8 h-1 bg-gray-400 rounded-full mb-0.5" />
-            </div>
+            {!isVirtual && (
+                <div 
+                    onMouseDown={(e) => onResizeStart(e, task.id, task.duration || 60)}
+                    className="h-2 w-full cursor-s-resize absolute bottom-0 left-0 flex justify-center items-end opacity-0 group-hover:opacity-100 bg-black/5 dark:bg-white/10 pointer-events-auto"
+                >
+                     <div className="w-8 h-1 bg-gray-400 rounded-full mb-0.5" />
+                </div>
+            )}
         </div>
     )
 });
@@ -216,6 +230,56 @@ export const CalendarBoard = ({
         }
         return days;
     }, [currentWeekStart]);
+
+    const visibleTasks = useMemo(() => tasks.filter(t => visibleProjects[t.projectId]), [tasks, visibleProjects]);
+
+    // Generate Virtual Tasks for Recurrence
+    const allWeekTasks = useMemo(() => {
+        const virtualTasks: Task[] = [];
+        // Only process recurrence if we have days
+        if (weekDays.length === 0) return visibleTasks;
+
+        visibleTasks.forEach(task => {
+            // Must have recurrence, a due date, and not be completed (unless we want to show completed recurrences, but usually next one is separate)
+            if (!task.recurrence || task.recurrence === 'none' || !task.dueDate || task.completed) return;
+
+            const taskDate = parseLocalDate(task.dueDate);
+            if (!taskDate) return;
+
+            weekDays.forEach(day => {
+                const dayStr = day.toISOString().split('T')[0];
+                
+                // If this is the ACTUAL due date, the real task is already in visibleTasks, so skip
+                if (dayStr === task.dueDate) return;
+
+                // If day is before the start date of the recurrence, skip
+                if (day < taskDate) return;
+
+                let matches = false;
+                
+                if (task.recurrence === 'daily') {
+                    matches = true;
+                } else if (task.recurrence === 'weekly') {
+                    if (day.getDay() === taskDate.getDay()) matches = true;
+                } else if (task.recurrence === 'monthly') {
+                    if (day.getDate() === taskDate.getDate()) matches = true;
+                } else if (task.recurrence === 'yearly') {
+                    if (day.getDate() === taskDate.getDate() && day.getMonth() === taskDate.getMonth()) matches = true;
+                }
+
+                if (matches) {
+                    virtualTasks.push({
+                        ...task,
+                        id: `${task.id}_virtual_${dayStr}`, // Unique ID for React Key
+                        dueDate: dayStr,
+                        completed: false // Projections are always Todo
+                    });
+                }
+            });
+        });
+
+        return [...visibleTasks, ...virtualTasks];
+    }, [visibleTasks, weekDays]);
 
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -341,8 +405,6 @@ export const CalendarBoard = ({
     const weekEnd = new Date(currentWeekStart); weekEnd.setDate(weekEnd.getDate()+4);
     const weekEndStr = weekEnd.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
 
-    const visibleTasks = tasks.filter(t => visibleProjects[t.projectId]);
-
     return (
         <div className="flex flex-1 h-full overflow-hidden">
             {/* BACKLOG PANEL */}
@@ -456,7 +518,9 @@ export const CalendarBoard = ({
                                 {weekDays.map((day, i) => {
                                     const dateStr = day.toISOString().split('T')[0];
                                     const isToday = isDueToday(dateStr);
-                                    const dayTasks = visibleTasks.filter(t => t.dueDate === dateStr && !t.completed);
+                                    // Use allWeekTasks to include virtual tasks in All-Day view (if they have no time)
+                                    // But typically recurring tasks have times. If not, they end up here.
+                                    const dayTasks = allWeekTasks.filter(t => t.dueDate === dateStr && !t.completed);
                                     const untimedTasks = dayTasks.filter(t => !t.dueTime);
                                     return (
                                         <div 
@@ -517,7 +581,8 @@ export const CalendarBoard = ({
                         <div className="flex-1 grid grid-cols-5 divide-x min-w-0">
                              {weekDays.map((day, i) => {
                                  const dateStr = day.toISOString().split('T')[0];
-                                 const dayTasks = visibleTasks.filter(t => t.dueDate === dateStr && !t.completed);
+                                 // Use allWeekTasks to include virtual tasks
+                                 const dayTasks = allWeekTasks.filter(t => t.dueDate === dateStr && !t.completed);
                                  const timedTasks = dayTasks.filter(t => t.dueTime);
                                  const isToday = isDueToday(dateStr);
                                  
@@ -556,9 +621,6 @@ export const CalendarBoard = ({
                                               {timedTasks.map(t => {
                                                   // NOTE: If resizing, override height locally for visual smoothness, 
                                                   // but for drag optimization we just pass props.
-                                                  // We handle tempHeight via resizingTask in render loop if needed, but since we extracted the component,
-                                                  // we'll pass the 'task' which is updated on mouseUp.
-                                                  // To support real-time visual resizing, we would need to pass tempHeight down if resizingTask matches.
                                                   let effectiveTask = t;
                                                   if (resizingTask === t.id && tempHeight !== null) {
                                                       effectiveTask = { ...t, duration: Math.round((tempHeight / PIXELS_PER_HOUR) * 60) };
