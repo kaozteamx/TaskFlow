@@ -1,5 +1,5 @@
 import React from 'react';
-import { GripVertical, CheckCircle2, Circle, Flag, Repeat, ClipboardList, Edit2, Trash2 } from 'lucide-react';
+import { GripVertical, CheckCircle2, Circle, Flag, Repeat, ClipboardList, Edit2, Trash2, AlignLeft } from 'lucide-react';
 import { Task } from '../types';
 import { PRIORITIES } from '../utils';
 import { isOverdue, isDueToday, getDaysOpen, formatDate } from '../utils';
@@ -20,11 +20,11 @@ export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjec
         onMouseDown={(e) => e.stopPropagation()}
         onClick={() => onClick(task)} 
         data-task-id={task.id} 
-        className={`group flex items-center gap-4 p-4 rounded-xl border mb-3 cursor-pointer transition-all duration-200 ${priorityStyle.border} ${task.completed ? isDark ? 'bg-zinc-900/30 border-zinc-800/50 opacity-50' : 'bg-gray-50 border-gray-100 opacity-60' : isDark ? 'bg-[#18181b] border-zinc-800 hover:border-zinc-700' : 'bg-white border-gray-200 hover:border-emerald-200'}`}
+        className={`group flex items-start gap-4 p-4 rounded-xl border mb-3 cursor-pointer transition-all duration-200 ${priorityStyle.border} ${task.completed ? isDark ? 'bg-zinc-900/30 border-zinc-800/50 opacity-50' : 'bg-gray-50 border-gray-100 opacity-60' : isDark ? 'bg-[#18181b] border-zinc-800 hover:border-zinc-700' : 'bg-white border-gray-200 hover:border-emerald-200'}`}
     >
-      <div className={`${isDark ? 'text-zinc-600' : 'text-gray-300'} cursor-move opacity-0 group-hover:opacity-50 hover:opacity-100`}><GripVertical size={16} /></div>
-      <button onClick={(e) => { e.stopPropagation(); onToggle(task); }} className={`flex-shrink-0 transition-colors ${task.completed ? 'text-emerald-500' : overdue ? 'text-red-500' : isDark ? 'text-zinc-600 hover:text-emerald-500' : 'text-gray-400 hover:text-emerald-500'}`}>{task.completed ? <CheckCircle2 size={24} /> : <Circle size={24} />}</button>
-      <div className="flex-1 min-w-0 flex flex-col justify-center">
+      <div className={`mt-1 ${isDark ? 'text-zinc-600' : 'text-gray-300'} cursor-move opacity-0 group-hover:opacity-50 hover:opacity-100`}><GripVertical size={16} /></div>
+      <button onClick={(e) => { e.stopPropagation(); onToggle(task); }} className={`mt-0.5 flex-shrink-0 transition-colors ${task.completed ? 'text-emerald-500' : overdue ? 'text-red-500' : isDark ? 'text-zinc-600 hover:text-emerald-500' : 'text-gray-400 hover:text-emerald-500'}`}>{task.completed ? <CheckCircle2 size={24} /> : <Circle size={24} />}</button>
+      <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
         <div className="flex items-center gap-3 flex-wrap">
             <span className={`text-[15px] font-medium transition-all ${task.completed ? isDark ? 'text-zinc-500 line-through' : 'text-gray-400 line-through' : isDark ? 'text-zinc-200' : 'text-gray-700'}`}>{task.title}</span>
             <div className="flex items-center gap-2">
@@ -48,6 +48,12 @@ export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjec
                 )}
             </div>
         </div>
+        {task.description && (
+            <div className={`flex items-start gap-1.5 text-xs leading-relaxed ${isDark ? 'text-zinc-500' : 'text-gray-500'}`}>
+                 <AlignLeft size={12} className="mt-0.5 opacity-50 flex-shrink-0" />
+                 <span className="line-clamp-2">{task.description}</span>
+            </div>
+        )}
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button onClick={(e) => { e.stopPropagation(); onOpenChecklist(task); }} className={`p-2 rounded-lg ${isDark ? 'text-zinc-500 hover:text-purple-400' : 'text-gray-400 hover:text-purple-500'}`} title="Notas"><ClipboardList size={16} /></button>
