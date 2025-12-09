@@ -12,7 +12,9 @@ export interface Task {
     projectId: string;
     title: string;
     description: string;
-    dueDate: string;
+    dueDate: string; // YYYY-MM-DD
+    dueTime?: string; // HH:mm
+    duration?: number; // in minutes
     completed: boolean;
     parentTaskId: string | null;
     priority: 'high' | 'medium' | 'low' | 'none';

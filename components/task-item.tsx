@@ -1,0 +1,59 @@
+import React from 'react';
+import { GripVertical, CheckCircle2, Circle, Flag, Repeat, ClipboardList, Edit2, Trash2 } from 'lucide-react';
+import { Task } from '../types';
+import { PRIORITIES } from '../utils';
+import { isOverdue, isDueToday, getDaysOpen, formatDate } from '../utils';
+
+export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjectName, onOpenChecklist }: {
+    task: Task, onToggle: any, onClick: any, onDelete: any, isDark: boolean, showProjectName: string | null, onOpenChecklist: any
+}) => {
+  const overdue = !task.completed && isOverdue(task.dueDate);
+  const dueToday = !task.completed && isDueToday(task.dueDate);
+  const priorityStyle = PRIORITIES[task.priority] || PRIORITIES['none'];
+  const noteContent = task.noteContent || '';
+  const totalChecks = (noteContent.match(/\[ \]|\[x\]/g) || []).length;
+  const completedChecks = (noteContent.match(/\[x\]/g) || []).length;
+  const daysOpen = getDaysOpen(task.createdAt);
+  
+  return (
+    <div 
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={() => onClick(task)} 
+        data-task-id={task.id} 
+        className={`group flex items-center gap-4 p-4 rounded-xl border mb-3 cursor-pointer transition-all duration-200 ${priorityStyle.border} ${task.completed ? isDark ? 'bg-zinc-900/30 border-zinc-800/50 opacity-50' : 'bg-gray-50 border-gray-100 opacity-60' : isDark ? 'bg-[#18181b] border-zinc-800 hover:border-zinc-700' : 'bg-white border-gray-200 hover:border-emerald-200'}`}
+    >
+      <div className={`${isDark ? 'text-zinc-600' : 'text-gray-300'} cursor-move opacity-0 group-hover:opacity-50 hover:opacity-100`}><GripVertical size={16} /></div>
+      <button onClick={(e) => { e.stopPropagation(); onToggle(task); }} className={`flex-shrink-0 transition-colors ${task.completed ? 'text-emerald-500' : overdue ? 'text-red-500' : isDark ? 'text-zinc-600 hover:text-emerald-500' : 'text-gray-400 hover:text-emerald-500'}`}>{task.completed ? <CheckCircle2 size={24} /> : <Circle size={24} />}</button>
+      <div className="flex-1 min-w-0 flex flex-col justify-center">
+        <div className="flex items-center gap-3 flex-wrap">
+            <span className={`text-[15px] font-medium transition-all ${task.completed ? isDark ? 'text-zinc-500 line-through' : 'text-gray-400 line-through' : isDark ? 'text-zinc-200' : 'text-gray-700'}`}>{task.title}</span>
+            <div className="flex items-center gap-2">
+                {task.priority && task.priority !== 'none' && (<span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 border ${priorityStyle.bg} ${priorityStyle.color} border-transparent`}><Flag size={10} className={priorityStyle.iconColor} />{priorityStyle.label}</span>)}
+                {showProjectName && (<span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 border ${isDark ? 'bg-zinc-800 text-zinc-400 border-zinc-700' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>{showProjectName}</span>)}
+                {task.dueDate && !task.completed && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 border ${overdue ? 'bg-red-500/10 text-red-500 border-red-500/20' : dueToday ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : isDark ? 'bg-zinc-800 text-zinc-500 border-zinc-700' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>{formatDate(task.dueDate)} {task.dueTime && <span className="opacity-70 ml-1">{task.dueTime}</span>}</span>}
+                {daysOpen > 0 && !task.completed && (
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold border ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`} title="Días desde creación">
+                        {daysOpen}d
+                    </div>
+                )}
+                {task.recurrence && task.recurrence !== 'none' && (
+                    <div className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${isDark ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-600 border-blue-100'}`} title="Tarea recurrente">
+                        <Repeat size={10} />
+                    </div>
+                )}
+                {totalChecks > 0 && (
+                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 border ${isDark ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-purple-50 text-purple-600 border-purple-100'}`}>
+                       <ClipboardList size={10} /> {completedChecks}/{totalChecks}
+                   </span>
+                )}
+            </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={(e) => { e.stopPropagation(); onOpenChecklist(task); }} className={`p-2 rounded-lg ${isDark ? 'text-zinc-500 hover:text-purple-400' : 'text-gray-400 hover:text-purple-500'}`} title="Notas"><ClipboardList size={16} /></button>
+        <button onClick={(e) => { e.stopPropagation(); onClick(task); }} className={`p-2 rounded-lg ${isDark ? 'text-zinc-500 hover:text-zinc-200' : 'text-gray-400 hover:text-gray-700'}`}><Edit2 size={16} /></button>
+        <button onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} className={`p-2 rounded-lg ${isDark ? 'text-zinc-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}><Trash2 size={16} /></button>
+      </div>
+    </div>
+  );
+};
