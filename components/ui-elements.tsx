@@ -61,6 +61,52 @@ export const CustomTimeSelect = ({ value, onChange, options, isDark, disabled, p
     );
 };
 
+export const CustomSelect = ({ value, onChange, options, isDark, placeholder, icon: Icon }: any) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const selectedLabel = options.find((o: any) => o.value === value)?.label || placeholder || value;
+
+    return (
+        <div className="relative w-full" ref={containerRef}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:bg-zinc-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+            >
+                <div className="flex items-center gap-2">
+                    {Icon && <Icon size={14} className="opacity-70" />}
+                    <span className="truncate">{selectedLabel}</span>
+                </div>
+                <ChevronDown size={12} className="opacity-50 flex-shrink-0" />
+            </button>
+            {isOpen && (
+                <div className={`absolute top-full left-0 mt-1 w-full max-h-48 overflow-y-auto custom-scrollbar rounded-lg shadow-xl border z-50 py-1 animate-in fade-in zoom-in-95 ${isDark ? 'bg-[#1e1e20] border-zinc-700' : 'bg-white border-gray-200'}`}>
+                    {options.map((opt: any) => (
+                        <button
+                            key={opt.value}
+                            onClick={() => { onChange(opt.value); setIsOpen(false); }}
+                            className={`w-full text-left px-3 py-2 text-xs transition-colors ${value === opt.value ? 'bg-emerald-500/10 text-emerald-500 font-bold' : isDark ? 'text-zinc-300 hover:bg-zinc-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 export const NotificationToast = ({ notification, onClose }: { notification: NotificationType | null, onClose: () => void }) => {
     if (!notification) return null;
     useEffect(() => { const timer = setTimeout(onClose, 4000); return () => clearTimeout(timer); }, [notification, onClose]);

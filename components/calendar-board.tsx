@@ -103,6 +103,37 @@ const BacklogTaskCard = memo(({ task, projects, isDark, onDragStart, onEditTask 
     );
 });
 
+const AllDayTaskCard = memo(({ task, projects, isDark, onDragStart, onEditTask }: any) => {
+    const project = projects.find((p: any) => p.id === task.projectId);
+    const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
+    const isVirtual = task.id.includes('_virtual_');
+
+    const handleEdit = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isVirtual) {
+            const realId = task.id.split('_virtual_')[0];
+            onEditTask({ ...task, id: realId });
+        } else {
+            onEditTask(task);
+        }
+    };
+
+    return (
+        <div 
+            draggable={!isVirtual}
+            onMouseDown={(e) => e.stopPropagation()}
+            onDragStart={(e) => !isVirtual && onDragStart(e, task.id)}
+            onClick={handleEdit}
+            className={`p-1.5 mb-1 rounded border text-[10px] cursor-move hover:shadow-sm transition-all select-none ${colorStyle.bg} ${colorStyle.border} ${isVirtual ? 'border-dashed' : ''} ${task.completed ? 'opacity-60' : ''}`}
+        >
+            <div className={`font-bold truncate leading-tight flex items-center gap-1 ${colorStyle.text}`}>
+                {task.title}
+                {isVirtual && <Repeat size={8} className="opacity-70" />}
+            </div>
+        </div>
+    );
+});
+
 const TimeGridTask = memo(({ task, layout, projects, isDark, resizingTask, draggingTaskId, onEditTask, onDragStart, onResizeStart }: any) => {
     let top = 0;
     if (task.dueTime) {
@@ -128,10 +159,6 @@ const TimeGridTask = memo(({ task, layout, projects, isDark, resizingTask, dragg
 
     const handleEdit = (e: React.MouseEvent) => {
         e.stopPropagation();
-        // If it's virtual, we edit the original task (logic handled by passing the task object which contains original data but modified ID)
-        // We strip the ID to pass the original one if needed, but the main app finds task by ID.
-        // Quick fix: The main App looks up by ID. Virtual ID won't be found.
-        // We need to pass a task object with the REAL ID.
         if (isVirtual) {
             const realId = task.id.split('_virtual_')[0];
             onEditTask({ ...task, id: realId });
@@ -541,7 +568,7 @@ export const CalendarBoard = ({
                                             {isAllDayExpanded && (
                                                 <div className={`p-1 min-h-[40px] space-y-1 border-b transition-colors ${isDark ? 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/60' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}>
                                                     {untimedTasks.map(t => (
-                                                        <BacklogTaskCard 
+                                                        <AllDayTaskCard 
                                                             key={t.id} 
                                                             task={t} 
                                                             projects={projects}

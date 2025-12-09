@@ -2,7 +2,7 @@ import React from 'react';
 import { X, CheckCircle2, Circle, Flag, Calendar as CalendarIcon, Repeat, ClipboardList, Plus, Trash2 } from 'lucide-react';
 import { Task } from '../types';
 import { PRIORITIES, TIME_SLOTS, RECURRENCE_OPTIONS, formatCreationDate, getEndTime, calculateDuration } from '../utils';
-import { CustomTimeSelect } from './ui-elements';
+import { CustomTimeSelect, CustomSelect } from './ui-elements';
 
 interface DetailsPanelProps {
     editingTask: Task | null;
@@ -58,44 +58,39 @@ export const DetailsPanel = ({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-8">
+                    <div className="space-y-4 mb-8">
                         <div className={`p-3 rounded-lg border ${isDark ? 'bg-zinc-900/50 border-zinc-800/50' : 'bg-gray-50 border-gray-100'}`}>
                             <label className={`text-[10px] font-bold uppercase mb-2 flex items-center gap-1 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
                                 <CalendarIcon size={10} /> Fecha & Horario
                             </label>
-                            <div className="space-y-3">
+                            <div className="flex items-center gap-2">
                                 <input 
                                     type="date" 
                                     value={editingTask.dueDate || ''} 
                                     onChange={(e) => handleUpdateTaskDetail('dueDate', e.target.value)} 
-                                    className={`bg-transparent text-xs w-full outline-none font-medium ${isDark ? 'text-zinc-200 [color-scheme:dark]' : 'text-gray-700 [color-scheme:light]'}`} 
+                                    className={`bg-transparent text-xs outline-none font-medium flex-1 min-w-0 ${isDark ? 'text-zinc-200 [color-scheme:dark]' : 'text-gray-700 [color-scheme:light]'}`} 
                                 />
-                                <div className={`pt-2 border-t flex items-center justify-between ${isDark ? 'border-zinc-800' : 'border-gray-200'}`}>
-                                    <div className="flex flex-col gap-0.5 relative">
-                                            <label className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>inicio</label>
-                                            <CustomTimeSelect 
-                                            value={editingTask.dueTime}
-                                            onChange={(val: string) => handleUpdateTaskDetail('dueTime', val)}
-                                            options={TIME_SLOTS}
-                                            isDark={isDark}
-                                            placeholder="--:--"
-                                            />
-                                    </div>
-                                    <span className={`mb-auto mt-6 ${isDark ? 'text-zinc-700' : 'text-gray-300'}`}>-</span>
-                                    <div className="flex flex-col gap-0.5">
-                                        <label className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>fin</label>
-                                        <CustomTimeSelect 
-                                            value={getEndTime(editingTask.dueTime || '00:00', editingTask.duration || 60)}
-                                            onChange={(val: string) => {
-                                                const newDuration = calculateDuration(editingTask.dueTime || '00:00', val);
-                                                handleUpdateTaskDetail('duration', newDuration);
-                                            }}
-                                            options={TIME_SLOTS}
-                                            isDark={isDark}
-                                            disabled={!editingTask.dueTime}
-                                            placeholder="--:--"
-                                            />
-                                    </div>
+                                <div className={`w-px h-4 mx-1 ${isDark ? 'bg-zinc-700' : 'bg-gray-300'}`} />
+                                <div className="flex items-center gap-1">
+                                    <CustomTimeSelect 
+                                    value={editingTask.dueTime}
+                                    onChange={(val: string) => handleUpdateTaskDetail('dueTime', val)}
+                                    options={TIME_SLOTS}
+                                    isDark={isDark}
+                                    placeholder="--:--"
+                                    />
+                                    <span className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>-</span>
+                                    <CustomTimeSelect 
+                                        value={getEndTime(editingTask.dueTime || '00:00', editingTask.duration || 60)}
+                                        onChange={(val: string) => {
+                                            const newDuration = calculateDuration(editingTask.dueTime || '00:00', val);
+                                            handleUpdateTaskDetail('duration', newDuration);
+                                        }}
+                                        options={TIME_SLOTS}
+                                        isDark={isDark}
+                                        disabled={!editingTask.dueTime}
+                                        placeholder="--:--"
+                                        />
                                 </div>
                             </div>
                         </div>
@@ -103,9 +98,12 @@ export const DetailsPanel = ({
                             <label className={`text-[10px] font-bold uppercase mb-2 flex items-center gap-1 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
                                 <Repeat size={10} /> Repetir
                             </label>
-                            <select value={editingTask.recurrence || ''} onChange={(e) => handleUpdateTaskDetail('recurrence', e.target.value)} className={`bg-transparent text-xs w-full outline-none appearance-none mt-1 ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>
-                                {Object.entries(RECURRENCE_OPTIONS).map(([key, opt]) => (<option key={key} value={opt.value} className={isDark ? 'bg-zinc-900' : 'bg-white'}>{opt.label}</option>))}
-                            </select>
+                            <CustomSelect 
+                                value={editingTask.recurrence || 'none'}
+                                onChange={(val: string) => handleUpdateTaskDetail('recurrence', val)}
+                                options={Object.values(RECURRENCE_OPTIONS)}
+                                isDark={isDark}
+                            />
                         </div>
                     </div>
 
