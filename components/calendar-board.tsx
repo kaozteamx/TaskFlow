@@ -3,6 +3,78 @@ import { ChevronUp, ChevronDown, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, Lis
 import { Task, Project } from '../types';
 import { PRIORITIES, getMonday, isDueToday, getEndTime, PROJECT_COLORS } from '../utils';
 
+// Helper to calculate minutes for layout logic
+const getMinutes = (time: string) => {
+    if (!time) return 0;
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+};
+
+// Algorithm to calculate overlapping positions
+const calculateDayLayouts = (dayTasks: Task[]) => {
+    // 1. Sort tasks by start time
+    const sorted = [...dayTasks].sort((a, b) => getMinutes(a.dueTime!) - getMinutes(b.dueTime!));
+    const layouts: Record<string, { left: number, width: number }> = {};
+    
+    // 2. Group into overlapping clusters
+    const clusters: Task[][] = [];
+    let currentCluster: Task[] = [];
+    let clusterEnd = -1;
+
+    sorted.forEach(task => {
+        const start = getMinutes(task.dueTime!);
+        const end = start + (task.duration || 60);
+
+        if (currentCluster.length === 0) {
+            currentCluster.push(task);
+            clusterEnd = end;
+        } else {
+            // Check intersection with the cluster bounds
+            if (start < clusterEnd) {
+                currentCluster.push(task);
+                clusterEnd = Math.max(clusterEnd, end);
+            } else {
+                clusters.push(currentCluster);
+                currentCluster = [task];
+                clusterEnd = end;
+            }
+        }
+    });
+    if (currentCluster.length > 0) clusters.push(currentCluster);
+
+    // 3. Process clusters to assign columns
+    clusters.forEach(cluster => {
+        const columns: Task[][] = [];
+        cluster.forEach(task => {
+            const start = getMinutes(task.dueTime!);
+            let placed = false;
+            // Try to fit in existing column
+            for(const col of columns) {
+                const lastTask = col[col.length - 1];
+                const lastEnd = getMinutes(lastTask.dueTime!) + (lastTask.duration || 60);
+                if (start >= lastEnd) {
+                    col.push(task);
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) columns.push([task]);
+        });
+
+        const width = 100 / columns.length;
+        columns.forEach((col, colIndex) => {
+            col.forEach(task => {
+                layouts[task.id] = {
+                    left: colIndex * width,
+                    width: width
+                };
+            });
+        });
+    });
+
+    return layouts;
+};
+
 export const CalendarBoard = ({ 
     tasks, 
     projects, 
@@ -181,7 +253,7 @@ export const CalendarBoard = ({
         );
     };
 
-    const TimeGridTask = ({ task }: { task: Task }) => {
+    const TimeGridTask = ({ task, layout }: { task: Task, layout?: { left: number, width: number } }) => {
         let top = 0;
         if (task.dueTime) {
             const [h, m] = task.dueTime.split(':').map(Number);
@@ -195,14 +267,23 @@ export const CalendarBoard = ({
         const project = projects.find(p => p.id === task.projectId);
         const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
 
+        // Determine Layout Style
+        const layoutStyle: React.CSSProperties = {
+            top: `${top}px`,
+            height: `${height}px`,
+            left: layout ? `${layout.left}%` : '2px',
+            width: layout ? `calc(${layout.width}% - 2px)` : 'calc(100% - 4px)',
+            zIndex: resizingTask === task.id ? 50 : 10
+        };
+
         return (
             <div
                 draggable={resizingTask !== task.id}
                 onMouseDown={(e) => e.stopPropagation()}
                 onDragStart={(e) => handleDragStart(e, task.id)}
                 onClick={(e) => { e.stopPropagation(); onEditTask(task); }}
-                style={{ top: `${top}px`, height: `${height}px` }}
-                className={`absolute left-0.5 right-1 rounded border text-[10px] select-none group z-10 overflow-hidden flex flex-col ${colorStyle.bg} ${colorStyle.border} ${task.completed ? 'opacity-60' : ''} ${resizingTask ? 'pointer-events-none' : ''}`}
+                style={layoutStyle}
+                className={`absolute rounded border text-[10px] select-none group overflow-hidden flex flex-col ${colorStyle.bg} ${colorStyle.border} ${task.completed ? 'opacity-60' : ''} ${resizingTask ? 'pointer-events-none' : ''}`}
             >
                 <div className="pl-2 pr-1 py-1 flex-1 min-h-0">
                     <div className={`font-bold truncate leading-tight ${colorStyle.text}`}>{task.title}</div>
@@ -391,6 +472,9 @@ export const CalendarBoard = ({
                                  const dayTasks = visibleTasks.filter(t => t.dueDate === dateStr && !t.completed);
                                  const timedTasks = dayTasks.filter(t => t.dueTime);
                                  const isToday = isDueToday(dateStr);
+                                 
+                                 // Calculate layout for this specific day
+                                 const layouts = calculateDayLayouts(timedTasks);
 
                                  return (
                                      <div key={i} className={`flex flex-col relative ${isDark ? 'divide-zinc-800 border-zinc-800' : 'divide-gray-100 border-gray-100'} ${isToday ? isDark ? 'bg-zinc-900/10' : 'bg-emerald-50/10' : ''}`}>
@@ -406,7 +490,7 @@ export const CalendarBoard = ({
                                                   </div>
                                               ))}
                                               {timedTasks.map(t => (
-                                                  <TimeGridTask key={t.id} task={t} />
+                                                  <TimeGridTask key={t.id} task={t} layout={layouts[t.id]} />
                                               ))}
                                           </div>
                                      </div>
