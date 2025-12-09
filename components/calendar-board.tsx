@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { ChevronUp, ChevronDown, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, List, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Task, Project } from '../types';
 import { PRIORITIES, getMonday, isDueToday, getEndTime, PROJECT_COLORS } from '../utils';
@@ -75,6 +75,85 @@ const calculateDayLayouts = (dayTasks: Task[]) => {
     return layouts;
 };
 
+const PIXELS_PER_HOUR = 60;
+const PIXELS_PER_15_MIN = PIXELS_PER_HOUR / 4;
+
+// --- Subcomponents extracted to prevent re-renders ---
+
+const BacklogTaskCard = memo(({ task, projects, isDark, onDragStart, onEditTask }: any) => {
+    const project = projects.find((p: any) => p.id === task.projectId);
+    const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
+
+    return (
+        <div 
+            draggable 
+            onMouseDown={(e) => e.stopPropagation()}
+            onDragStart={(e) => onDragStart(e, task.id)}
+            onClick={() => onEditTask(task)}
+            className={`p-2 mb-2 rounded-lg border text-xs cursor-move hover:shadow-md transition-all select-none ${isDark ? 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700' : 'bg-white border-gray-200 hover:border-emerald-300'} ${task.completed ? 'opacity-50' : ''}`}
+            style={isDark ? {} : { borderLeftColor: colorStyle ? colorStyle.dot.replace('bg-', '') : undefined, borderLeftWidth: '4px' }}
+        >
+            <div className="flex items-start gap-2">
+                {isDark && <div className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${colorStyle ? colorStyle.dot : 'bg-zinc-500'}`} />}
+                <span className={`line-clamp-2 ${isDark ? 'text-zinc-200' : 'text-gray-700'} ${task.completed ? 'line-through' : ''}`}>
+                    {task.title}
+                </span>
+            </div>
+        </div>
+    );
+});
+
+const TimeGridTask = memo(({ task, layout, projects, isDark, resizingTask, draggingTaskId, onEditTask, onDragStart, onResizeStart }: any) => {
+    let top = 0;
+    if (task.dueTime) {
+        const [h, m] = task.dueTime.split(':').map(Number);
+        top = (h * 60 + m) * (PIXELS_PER_HOUR / 60);
+    }
+    let height = (task.duration || 60) * (PIXELS_PER_HOUR / 60);
+    
+    // We handle tempHeight via resizingTask in the parent, but for smooth visual updates, 
+    // the parent needs to pass the explicit height or we calculate it. 
+    // *Simplified here:* The parent will trigger a re-render if resizing, so standard props work.
+    // However, we need to know if WE are the one being resized to use the dynamic height from parent state if we wanted to pass it down.
+    // In this implementation, we'll keep it simple: props update, we render.
+
+    const project = projects.find((p: any) => p.id === task.projectId);
+    const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
+    const isDragging = draggingTaskId === task.id;
+
+    // Determine Layout Style
+    const layoutStyle: React.CSSProperties = {
+        top: `${top}px`,
+        height: `${height}px`,
+        left: layout ? `${layout.left}%` : '2px',
+        width: layout ? `calc(${layout.width}% - 2px)` : 'calc(100% - 4px)',
+        zIndex: resizingTask === task.id ? 50 : (isDragging ? 40 : 10),
+        opacity: isDragging ? 0.5 : (task.completed ? 0.6 : 1)
+    };
+
+    return (
+        <div
+            draggable={resizingTask !== task.id}
+            onMouseDown={(e) => e.stopPropagation()}
+            onDragStart={(e) => onDragStart(e, task.id)}
+            onClick={(e) => { e.stopPropagation(); onEditTask(task); }}
+            style={layoutStyle}
+            className={`absolute rounded border text-[10px] select-none group overflow-hidden flex flex-col ${colorStyle.bg} ${colorStyle.border} ${resizingTask ? 'pointer-events-none' : ''}`}
+        >
+            <div className="pl-2 pr-1 py-1 flex-1 min-h-0">
+                <div className={`font-bold truncate leading-tight ${colorStyle.text}`}>{task.title}</div>
+                {height > 30 && <div className={`truncate opacity-70 ${colorStyle.text}`}>{task.dueTime} - {getEndTime(task.dueTime || '00:00', task.duration || 60)}</div>}
+            </div>
+            <div 
+                onMouseDown={(e) => onResizeStart(e, task.id, task.duration || 60)}
+                className="h-2 w-full cursor-s-resize absolute bottom-0 left-0 flex justify-center items-end opacity-0 group-hover:opacity-100 bg-black/5 dark:bg-white/10 pointer-events-auto"
+            >
+                 <div className="w-8 h-1 bg-gray-400 rounded-full mb-0.5" />
+            </div>
+        </div>
+    )
+});
+
 export const CalendarBoard = ({ 
     tasks, 
     projects, 
@@ -97,8 +176,11 @@ export const CalendarBoard = ({
     const [isAllDayExpanded, setIsAllDayExpanded] = useState(true);
     const [now, setNow] = useState(new Date());
     
-    // Resize State
+    // Interaction States
     const [resizingTask, setResizingTask] = useState<string | null>(null);
+    const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+    
+    // Resize Refs
     const [resizeStartY, setResizeStartY] = useState<number>(0);
     const [resizeStartHeight, setResizeStartHeight] = useState<number>(0);
     const [tempHeight, setTempHeight] = useState<number | null>(null);
@@ -135,21 +217,25 @@ export const CalendarBoard = ({
         return days;
     }, [currentWeekStart]);
 
-    // Generate hours 00:00 - 23:00
     const hours = Array.from({ length: 24 }, (_, i) => i);
-    const PIXELS_PER_HOUR = 60;
-    const PIXELS_PER_15_MIN = PIXELS_PER_HOUR / 4;
 
     const handleDragStart = (e: React.DragEvent, taskId: string) => {
+        e.stopPropagation(); // Prevent bubbling to container
+        setDraggingTaskId(taskId);
         e.dataTransfer.setData("taskId", taskId);
         e.dataTransfer.effectAllowed = "move";
+    };
+
+    const handleDragEnd = () => {
+        setDraggingTaskId(null);
     };
 
     const handleDropOnBacklog = (e: React.DragEvent) => {
         e.preventDefault();
         const taskId = e.dataTransfer.getData("taskId");
         if(taskId) {
-            onUpdateTask(taskId, null); // Clear date
+            onUpdateTask(taskId, null); 
+            setDraggingTaskId(null);
         }
     };
 
@@ -164,6 +250,7 @@ export const CalendarBoard = ({
         if(taskId) {
              const dateStr = date.toISOString().split('T')[0];
              onUpdateTaskTime(taskId, dateStr, '', 0); 
+             setDraggingTaskId(null);
         }
     };
 
@@ -187,6 +274,7 @@ export const CalendarBoard = ({
             const duration = task?.duration || 60;
 
             onUpdateTaskTime(taskId, dateStr, timeStr, duration);
+            setDraggingTaskId(null);
         }
     };
 
@@ -228,83 +316,13 @@ export const CalendarBoard = ({
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
         }
-    }, [resizingTask, resizeStartY, resizeStartHeight, tempHeight, tasks, PIXELS_PER_HOUR]);
+    }, [resizingTask, resizeStartY, resizeStartHeight, tempHeight, tasks]);
 
     const weekStartStr = currentWeekStart.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
     const weekEnd = new Date(currentWeekStart); weekEnd.setDate(weekEnd.getDate()+4);
     const weekEndStr = weekEnd.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
 
     const visibleTasks = tasks.filter(t => visibleProjects[t.projectId]);
-
-    const BacklogTaskCard = ({ task }: { task: Task }) => {
-        const pStyle = PRIORITIES[task.priority] || PRIORITIES['none'];
-        const project = projects.find(p => p.id === task.projectId);
-        const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
-
-        return (
-            <div 
-                draggable 
-                onMouseDown={(e) => e.stopPropagation()}
-                onDragStart={(e) => handleDragStart(e, task.id)}
-                onClick={() => onEditTask(task)}
-                className={`p-2 mb-2 rounded-lg border text-xs cursor-move hover:shadow-md transition-all select-none ${isDark ? 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700' : 'bg-white border-gray-200 hover:border-emerald-300'} ${task.completed ? 'opacity-50' : ''}`}
-                style={isDark ? {} : { borderLeftColor: colorStyle ? colorStyle.dot.replace('bg-', '') : undefined, borderLeftWidth: '4px' }}
-            >
-                <div className="flex items-start gap-2">
-                    {isDark && <div className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${colorStyle ? colorStyle.dot : 'bg-zinc-500'}`} />}
-                    <span className={`line-clamp-2 ${isDark ? 'text-zinc-200' : 'text-gray-700'} ${task.completed ? 'line-through' : ''}`}>
-                        {task.title}
-                    </span>
-                </div>
-            </div>
-        );
-    };
-
-    const TimeGridTask = ({ task, layout }: { task: Task, layout?: { left: number, width: number } }) => {
-        let top = 0;
-        if (task.dueTime) {
-            const [h, m] = task.dueTime.split(':').map(Number);
-            top = (h * 60 + m) * (PIXELS_PER_HOUR / 60);
-        }
-        let height = (task.duration || 60) * (PIXELS_PER_HOUR / 60);
-        if (resizingTask === task.id && tempHeight !== null) {
-            height = tempHeight;
-        }
-
-        const project = projects.find(p => p.id === task.projectId);
-        const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
-
-        // Determine Layout Style
-        const layoutStyle: React.CSSProperties = {
-            top: `${top}px`,
-            height: `${height}px`,
-            left: layout ? `${layout.left}%` : '2px',
-            width: layout ? `calc(${layout.width}% - 2px)` : 'calc(100% - 4px)',
-            zIndex: resizingTask === task.id ? 50 : 10
-        };
-
-        return (
-            <div
-                draggable={resizingTask !== task.id}
-                onMouseDown={(e) => e.stopPropagation()}
-                onDragStart={(e) => handleDragStart(e, task.id)}
-                onClick={(e) => { e.stopPropagation(); onEditTask(task); }}
-                style={layoutStyle}
-                className={`absolute rounded border text-[10px] select-none group overflow-hidden flex flex-col ${colorStyle.bg} ${colorStyle.border} ${task.completed ? 'opacity-60' : ''} ${resizingTask ? 'pointer-events-none' : ''}`}
-            >
-                <div className="pl-2 pr-1 py-1 flex-1 min-h-0">
-                    <div className={`font-bold truncate leading-tight ${colorStyle.text}`}>{task.title}</div>
-                    {height > 30 && <div className={`truncate opacity-70 ${colorStyle.text}`}>{task.dueTime} - {getEndTime(task.dueTime || '00:00', task.duration || 60)}</div>}
-                </div>
-                <div 
-                    onMouseDown={(e) => handleResizeStart(e, task.id, task.duration || 60)}
-                    className="h-2 w-full cursor-s-resize absolute bottom-0 left-0 flex justify-center items-end opacity-0 group-hover:opacity-100 bg-black/5 dark:bg-white/10 pointer-events-auto"
-                >
-                     <div className="w-8 h-1 bg-gray-400 rounded-full mb-0.5" />
-                </div>
-            </div>
-        )
-    };
 
     return (
         <div className="flex flex-1 h-full overflow-hidden">
@@ -354,7 +372,14 @@ export const CalendarBoard = ({
                                             <div className="pl-2 space-y-1">
                                                 {projTasks.length === 0 && <div className={`text-[10px] pl-2 italic ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>Vacío</div>}
                                                 {projTasks.map(t => (
-                                                    <BacklogTaskCard key={t.id} task={t} />
+                                                    <BacklogTaskCard 
+                                                        key={t.id} 
+                                                        task={t} 
+                                                        projects={projects}
+                                                        isDark={isDark}
+                                                        onDragStart={handleDragStart}
+                                                        onEditTask={onEditTask}
+                                                    />
                                                 ))}
                                             </div>
                                         )}
@@ -376,7 +401,10 @@ export const CalendarBoard = ({
             </div>
 
             {/* MAIN CALENDAR CONTENT (Single Scroll Container for alignment) */}
-            <div className={`flex-1 h-full overflow-y-auto custom-scrollbar relative ${isDark ? 'bg-[#09090b]' : 'bg-white'}`}>
+            <div 
+                className={`flex-1 h-full overflow-y-auto custom-scrollbar relative ${isDark ? 'bg-[#09090b]' : 'bg-white'}`}
+                onDragEnd={handleDragEnd} // Global drag end handler
+            >
                 {/* Min-width wrapper to force horizontal scroll if needed, keeping columns aligned */}
                 <div className="flex flex-col min-w-[700px]">
                     
@@ -429,22 +457,16 @@ export const CalendarBoard = ({
                                             {/* Untimed Tasks Area */}
                                             {isAllDayExpanded && (
                                                 <div className={`p-1 min-h-[40px] space-y-1 border-b transition-colors ${isDark ? 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/60' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}>
-                                                    {untimedTasks.map(t => {
-                                                        const project = projects.find(p => p.id === t.projectId);
-                                                        const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
-                                                        return (
-                                                            <div 
-                                                                key={t.id} 
-                                                                draggable
-                                                                onMouseDown={(e) => e.stopPropagation()}
-                                                                onDragStart={(e) => handleDragStart(e, t.id)}
-                                                                onClick={(e) => { e.stopPropagation(); onEditTask(t); }}
-                                                                className={`p-1 rounded border text-[10px] cursor-move select-none truncate ${colorStyle.bg} ${colorStyle.border} ${colorStyle.text}`}
-                                                            >
-                                                                {t.title}
-                                                            </div>
-                                                        )
-                                                    })}
+                                                    {untimedTasks.map(t => (
+                                                        <BacklogTaskCard 
+                                                            key={t.id} 
+                                                            task={t} 
+                                                            projects={projects}
+                                                            isDark={isDark}
+                                                            onDragStart={handleDragStart}
+                                                            onEditTask={onEditTask}
+                                                        />
+                                                    ))}
                                                 </div>
                                             )}
                                             {!isAllDayExpanded && untimedTasks.length > 0 && (
@@ -512,9 +534,32 @@ export const CalendarBoard = ({
                                                       <div className={`absolute w-full border-t border-dashed pointer-events-none ${isDark ? 'border-zinc-900' : 'border-gray-50'}`} style={{ top: '50%' }} />
                                                   </div>
                                               ))}
-                                              {timedTasks.map(t => (
-                                                  <TimeGridTask key={t.id} task={t} layout={layouts[t.id]} />
-                                              ))}
+                                              {timedTasks.map(t => {
+                                                  // NOTE: If resizing, override height locally for visual smoothness, 
+                                                  // but for drag optimization we just pass props.
+                                                  // We handle tempHeight via resizingTask in render loop if needed, but since we extracted the component,
+                                                  // we'll pass the 'task' which is updated on mouseUp.
+                                                  // To support real-time visual resizing, we would need to pass tempHeight down if resizingTask matches.
+                                                  let effectiveTask = t;
+                                                  if (resizingTask === t.id && tempHeight !== null) {
+                                                      effectiveTask = { ...t, duration: Math.round((tempHeight / PIXELS_PER_HOUR) * 60) };
+                                                  }
+                                                  
+                                                  return (
+                                                    <TimeGridTask 
+                                                        key={t.id} 
+                                                        task={effectiveTask} 
+                                                        layout={layouts[t.id]}
+                                                        projects={projects}
+                                                        isDark={isDark}
+                                                        resizingTask={resizingTask}
+                                                        draggingTaskId={draggingTaskId}
+                                                        onEditTask={onEditTask}
+                                                        onDragStart={handleDragStart}
+                                                        onResizeStart={handleResizeStart}
+                                                    />
+                                                  );
+                                              })}
                                           </div>
                                      </div>
                                  )
