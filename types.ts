@@ -4,6 +4,7 @@ export interface Project {
     links?: { name: string; url: string }[];
     link?: string; // Legacy support
     quickNotes?: string;
+    color?: string; // 'emerald' | 'blue' | 'purple' | 'amber' | 'rose' | 'cyan' | 'indigo'
     createdAt?: any;
 }
 

@@ -39,6 +39,7 @@ const App = () => {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projectName, setProjectName] = useState('');
   const [projectLinks, setProjectLinks] = useState<{name:string, url:string}[]>([{name:'', url:''}]);
+  const [projectColor, setProjectColor] = useState('gray');
 
   // List View States
   const [projectNotes, setProjectNotes] = useState('');
@@ -277,10 +278,12 @@ const App = () => {
       if (proj) {
           setEditingProject(proj);
           setProjectName(proj.name);
+          setProjectColor(proj.color || 'gray');
           setProjectLinks(proj.links || (proj.link ? [{name:'Recurso', url:proj.link}] : [{name:'', url:''}]));
       } else {
           setEditingProject(null);
           setProjectName('');
+          setProjectColor('emerald');
           setProjectLinks([{name:'', url:''}]);
       }
       setIsProjectModalOpen(true);
@@ -295,10 +298,10 @@ const App = () => {
       
       try {
           if (editingProject) {
-              await updateDoc(doc(colRef, editingProject.id), { name: projectName, links: validLinks });
+              await updateDoc(doc(colRef, editingProject.id), { name: projectName, links: validLinks, color: projectColor });
               setNotification({ type: 'success', message: 'Proyecto actualizado' });
           } else {
-              await addDoc(colRef, { name: projectName, links: validLinks, createdAt: serverTimestamp(), quickNotes: '' });
+              await addDoc(colRef, { name: projectName, links: validLinks, createdAt: serverTimestamp(), quickNotes: '', color: projectColor });
               setNotification({ type: 'success', message: 'Proyecto creado' });
           }
           setIsProjectModalOpen(false);
@@ -453,7 +456,7 @@ const App = () => {
       try {
           const chunks = []; let currentBatch = writeBatch(db); let count = 0; const pushBatch = () => { chunks.push(currentBatch); currentBatch = writeBatch(db); count = 0; };
           const projCol = getCollectionRef('projects'); const taskCol = getCollectionRef('tasks'); const logCol = getCollectionRef('pomodoro_logs');
-          for (const p of data.projects) { if (!p.id) continue; const ref = doc(projCol, p.id); const created = safeDate(p.createdAt) || new Date(); currentBatch.set(ref, { name: p.name || 'Sin nombre', createdAt: created, quickNotes: p.quickNotes || '', links: p.links || [] }); count++; if (count >= 450) pushBatch(); }
+          for (const p of data.projects) { if (!p.id) continue; const ref = doc(projCol, p.id); const created = safeDate(p.createdAt) || new Date(); currentBatch.set(ref, { name: p.name || 'Sin nombre', createdAt: created, quickNotes: p.quickNotes || '', links: p.links || [], color: p.color || 'gray' }); count++; if (count >= 450) pushBatch(); }
           for (const t of data.tasks) { 
               if (!t.id || !t.projectId) continue; 
               const ref = doc(taskCol, t.id); 
@@ -754,7 +757,7 @@ const App = () => {
        <PomodoroLogModal isOpen={pomodoroLogModalOpen} projects={projects} onSave={handleLogPomodoro} onCancel={() => setPomodoroLogModalOpen(false)} isDark={isDark} minutes={completedFocusMinutes} />
        <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} confirmText={confirmModal.confirmText} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal({isOpen:false})} isDark={isDark} />
        <TaskNoteModal isOpen={!!checklistModalTask} onClose={() => setChecklistModalTask(null)} task={checklistModalTask} onUpdateNote={handleUpdateNote} isDark={isDark} />
-       <ProjectModal isOpen={isProjectModalOpen} onClose={() => setIsProjectModalOpen(false)} isDark={isDark} editingProject={editingProject} name={projectName} setName={setProjectName} links={projectLinks} setLinks={setProjectLinks} onSave={handleSaveProject} />
+       <ProjectModal isOpen={isProjectModalOpen} onClose={() => setIsProjectModalOpen(false)} isDark={isDark} editingProject={editingProject} name={projectName} setName={setProjectName} links={projectLinks} setLinks={setProjectLinks} color={projectColor} setColor={setProjectColor} onSave={handleSaveProject} />
     </div>
   );
 };

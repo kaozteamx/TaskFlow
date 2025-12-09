@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Wifi, WifiOff, Globe, Share2, Loader2, Laptop, Smartphone, Check, Copy, LogOut, X, Timer, Plus, Minus } from 'lucide-react';
+import { AlertTriangle, Wifi, WifiOff, Globe, Share2, Loader2, Laptop, Smartphone, Check, Copy, LogOut, X, Timer, Plus, Minus, Palette } from 'lucide-react';
+import { PROJECT_COLORS } from '../utils';
 
 export const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel, isDark, confirmText = "Eliminar", cancelText = "Cancelar" }: any) => {
   if (!isOpen) return null;
@@ -123,7 +124,7 @@ export const PomodoroLogModal = ({ isOpen, projects, onSave, onCancel, isDark, m
     );
 };
 
-export const ProjectModal = ({ isOpen, onClose, isDark, editingProject, name, setName, links, setLinks, onSave }: any) => {
+export const ProjectModal = ({ isOpen, onClose, isDark, editingProject, name, setName, links, setLinks, color, setColor, onSave }: any) => {
     if (!isOpen) return null;
 
     const handleAddLinkRow = () => setLinks([...links, { name: '', url: '' }]);
@@ -140,12 +141,28 @@ export const ProjectModal = ({ isOpen, onClose, isDark, editingProject, name, se
                 <form onSubmit={onSave}>
                     <div className="space-y-4">
                         <input autoFocus placeholder="Nombre del proyecto" value={name} onChange={(e:any) => setName(e.target.value)} className={`w-full rounded-lg px-4 py-2.5 outline-none border transition-colors ${isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-200 focus:border-zinc-600 placeholder-zinc-600' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-emerald-400 placeholder-gray-400'}`} />
+                        
+                        <div>
+                             <label className={`text-[10px] font-bold uppercase mb-2 flex items-center gap-1 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}><Palette size={12}/> Color</label>
+                             <div className="flex flex-wrap gap-2">
+                                 {Object.entries(PROJECT_COLORS).map(([key, val]) => (
+                                     <button 
+                                        key={key} 
+                                        type="button" 
+                                        onClick={() => setColor(key)}
+                                        className={`w-6 h-6 rounded-full transition-transform ${val.dot} ${color === key ? 'ring-2 ring-offset-2 scale-110' : 'hover:scale-110'} ${isDark ? 'ring-offset-zinc-900' : 'ring-offset-white'}`}
+                                        title={val.label}
+                                     />
+                                 ))}
+                             </div>
+                        </div>
+
                         <div>
                             <div className="flex items-center justify-between mb-2">
                                 <label className={`text-[10px] font-bold uppercase ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Recursos</label>
                                 <button type="button" onClick={handleAddLinkRow} className={`text-xs flex items-center gap-1 ${isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'}`}><Plus size={12} /> Añadir Link</button>
                             </div>
-                            <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-1">
+                            <div className="space-y-2 max-h-[100px] overflow-y-auto custom-scrollbar pr-1">
                                 {links.map((link: any, index: number) => (
                                     <div key={index} className="flex gap-2 items-center">
                                         <input type="text" placeholder="Nombre" value={link.name} onChange={(e) => handleLinkChange(index, 'name', e.target.value)} className={`w-1/3 rounded-lg px-3 py-2 text-xs outline-none border transition-colors ${isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-200 focus:border-zinc-600' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-emerald-400'}`} />

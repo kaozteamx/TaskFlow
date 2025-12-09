@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronUp, ChevronDown, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, List, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Task, Project } from '../types';
-import { PRIORITIES, getMonday, isDueToday, getEndTime } from '../utils';
+import { PRIORITIES, getMonday, isDueToday, getEndTime, PROJECT_COLORS } from '../utils';
 
 export const CalendarBoard = ({ 
     tasks, 
@@ -159,6 +159,9 @@ export const CalendarBoard = ({
 
     const BacklogTaskCard = ({ task }: { task: Task }) => {
         const pStyle = PRIORITIES[task.priority] || PRIORITIES['none'];
+        const project = projects.find(p => p.id === task.projectId);
+        const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
+
         return (
             <div 
                 draggable 
@@ -166,9 +169,10 @@ export const CalendarBoard = ({
                 onDragStart={(e) => handleDragStart(e, task.id)}
                 onClick={() => onEditTask(task)}
                 className={`p-2 mb-2 rounded-lg border text-xs cursor-move hover:shadow-md transition-all select-none ${isDark ? 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700' : 'bg-white border-gray-200 hover:border-emerald-300'} ${task.completed ? 'opacity-50' : ''}`}
+                style={isDark ? {} : { borderLeftColor: colorStyle ? colorStyle.dot.replace('bg-', '') : undefined, borderLeftWidth: '4px' }}
             >
                 <div className="flex items-start gap-2">
-                    <div className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${pStyle.color.replace('text-', 'bg-')}`} />
+                    {isDark && <div className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${colorStyle ? colorStyle.dot : 'bg-zinc-500'}`} />}
                     <span className={`line-clamp-2 ${isDark ? 'text-zinc-200' : 'text-gray-700'} ${task.completed ? 'line-through' : ''}`}>
                         {task.title}
                     </span>
@@ -188,7 +192,8 @@ export const CalendarBoard = ({
             height = tempHeight;
         }
 
-        const pStyle = PRIORITIES[task.priority] || PRIORITIES['none'];
+        const project = projects.find(p => p.id === task.projectId);
+        const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
 
         return (
             <div
@@ -197,12 +202,11 @@ export const CalendarBoard = ({
                 onDragStart={(e) => handleDragStart(e, task.id)}
                 onClick={(e) => { e.stopPropagation(); onEditTask(task); }}
                 style={{ top: `${top}px`, height: `${height}px` }}
-                className={`absolute left-0.5 right-1 rounded border text-[10px] select-none group z-10 overflow-hidden flex flex-col ${isDark ? 'bg-zinc-800 border-zinc-600' : 'bg-white border-gray-300 shadow-sm'} ${task.completed ? 'opacity-60' : ''} ${resizingTask ? 'pointer-events-none' : ''}`}
+                className={`absolute left-0.5 right-1 rounded border text-[10px] select-none group z-10 overflow-hidden flex flex-col ${colorStyle.bg} ${colorStyle.border} ${task.completed ? 'opacity-60' : ''} ${resizingTask ? 'pointer-events-none' : ''}`}
             >
-                <div className={`w-1 h-full absolute left-0 top-0 ${pStyle.bg.replace('/10', '')}`} />
                 <div className="pl-2 pr-1 py-1 flex-1 min-h-0">
-                    <div className="font-bold truncate leading-tight">{task.title}</div>
-                    {height > 30 && <div className="truncate opacity-70">{task.dueTime} - {getEndTime(task.dueTime || '00:00', task.duration || 60)}</div>}
+                    <div className={`font-bold truncate leading-tight ${colorStyle.text}`}>{task.title}</div>
+                    {height > 30 && <div className={`truncate opacity-70 ${colorStyle.text}`}>{task.dueTime} - {getEndTime(task.dueTime || '00:00', task.duration || 60)}</div>}
                 </div>
                 <div 
                     onMouseDown={(e) => handleResizeStart(e, task.id, task.duration || 60)}
@@ -238,6 +242,7 @@ export const CalendarBoard = ({
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
                             {projects.map(proj => {
                                 const projTasks = tasks.filter(t => t.projectId === proj.id && !t.completed && !t.dueDate); 
+                                const colorStyle = PROJECT_COLORS[proj.color || 'gray'];
                                 return (
                                     <div key={proj.id} className="mb-4">
                                         <div 
@@ -246,6 +251,7 @@ export const CalendarBoard = ({
                                         >
                                             <div className="flex items-center gap-2 overflow-hidden">
                                                 {expandedProjects[proj.id] ? <ChevronUp size={12} className={isDark ? 'text-zinc-500' : 'text-gray-400'} /> : <ChevronDown size={12} className={isDark ? 'text-zinc-500' : 'text-gray-400'} />}
+                                                <div className={`w-2 h-2 rounded-full ${colorStyle.dot}`} />
                                                 <span className={`text-xs font-bold truncate ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>{proj.name}</span>
                                             </div>
                                             <button 
@@ -335,18 +341,22 @@ export const CalendarBoard = ({
                                             {/* Untimed Tasks Area */}
                                             {isAllDayExpanded && (
                                                 <div className={`p-1 min-h-[40px] space-y-1 border-b transition-colors ${isDark ? 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/60' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}>
-                                                    {untimedTasks.map(t => (
-                                                        <div 
-                                                            key={t.id} 
-                                                            draggable
-                                                            onMouseDown={(e) => e.stopPropagation()}
-                                                            onDragStart={(e) => handleDragStart(e, t.id)}
-                                                            onClick={(e) => { e.stopPropagation(); onEditTask(t); }}
-                                                            className={`p-1 rounded border text-[10px] cursor-move select-none truncate ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-white border-gray-200 text-gray-700 shadow-sm'}`}
-                                                        >
-                                                            {t.title}
-                                                        </div>
-                                                    ))}
+                                                    {untimedTasks.map(t => {
+                                                        const project = projects.find(p => p.id === t.projectId);
+                                                        const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
+                                                        return (
+                                                            <div 
+                                                                key={t.id} 
+                                                                draggable
+                                                                onMouseDown={(e) => e.stopPropagation()}
+                                                                onDragStart={(e) => handleDragStart(e, t.id)}
+                                                                onClick={(e) => { e.stopPropagation(); onEditTask(t); }}
+                                                                className={`p-1 rounded border text-[10px] cursor-move select-none truncate ${colorStyle.bg} ${colorStyle.border} ${colorStyle.text}`}
+                                                            >
+                                                                {t.title}
+                                                            </div>
+                                                        )
+                                                    })}
                                                 </div>
                                             )}
                                             {!isAllDayExpanded && untimedTasks.length > 0 && (

@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronRight
 } from 'lucide-react';
 import { Project } from '../types';
-import { HOME_VIEW } from '../utils';
+import { HOME_VIEW, PROJECT_COLORS } from '../utils';
 import { PomodoroTimer } from './pomodoro-timer';
 
 interface SidebarProps {
@@ -77,10 +77,13 @@ export const Sidebar = ({
                      )}
                      {(isSidebarExpanded ? isProjectsExpanded : true) && (
                          <div className="space-y-0.5">
-                             {projects.filter(p => p.id !== HOME_VIEW.id).map(p => (
+                             {projects.filter(p => p.id !== HOME_VIEW.id).map(p => {
+                                 const colorDot = PROJECT_COLORS[p.color || 'gray']?.dot || 'bg-zinc-400';
+                                 return (
                                  <div key={p.id} className="group relative">
                                      <button onClick={() => setActiveProject(p)} className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${activeProject.id === p.id ? 'bg-emerald-600/10 text-emerald-500' : isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-200'}`}>
-                                         <FolderOpen size={18} className={activeProject.id === p.id ? 'fill-emerald-600/20' : ''} />
+                                         {/* Use color dot instead of generic folder icon if collapsed, or just next to name */}
+                                         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorDot}`} />
                                          {isSidebarExpanded && <span className="text-sm truncate pr-12">{p.name}</span>}
                                      </button>
                                      {isSidebarExpanded && (
@@ -94,7 +97,7 @@ export const Sidebar = ({
                                          </div>
                                      )}
                                  </div>
-                             ))}
+                             )})}
                          </div>
                      )}
                 </div>

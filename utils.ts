@@ -9,6 +9,17 @@ export const HOME_VIEW = {
     quickNotes: ''
 } as Project;
 
+export const PROJECT_COLORS: Record<string, { label: string; dot: string; bg: string; border: string; text: string }> = {
+    emerald: { label: 'Esmeralda', dot: 'bg-emerald-500', bg: 'bg-emerald-500/15', border: 'border-emerald-500/50', text: 'text-emerald-600 dark:text-emerald-400' },
+    blue: { label: 'Azul', dot: 'bg-blue-500', bg: 'bg-blue-500/15', border: 'border-blue-500/50', text: 'text-blue-600 dark:text-blue-400' },
+    purple: { label: 'Violeta', dot: 'bg-purple-500', bg: 'bg-purple-500/15', border: 'border-purple-500/50', text: 'text-purple-600 dark:text-purple-400' },
+    amber: { label: 'Ámbar', dot: 'bg-amber-500', bg: 'bg-amber-500/15', border: 'border-amber-500/50', text: 'text-amber-600 dark:text-amber-400' },
+    rose: { label: 'Rosa', dot: 'bg-rose-500', bg: 'bg-rose-500/15', border: 'border-rose-500/50', text: 'text-rose-600 dark:text-rose-400' },
+    cyan: { label: 'Cian', dot: 'bg-cyan-500', bg: 'bg-cyan-500/15', border: 'border-cyan-500/50', text: 'text-cyan-600 dark:text-cyan-400' },
+    indigo: { label: 'Índigo', dot: 'bg-indigo-500', bg: 'bg-indigo-500/15', border: 'border-indigo-500/50', text: 'text-indigo-600 dark:text-indigo-400' },
+    gray: { label: 'Gris', dot: 'bg-gray-500', bg: 'bg-gray-500/15', border: 'border-gray-500/50', text: 'text-gray-600 dark:text-gray-400' }
+};
+
 export const PRIORITIES: Record<string, { label: string; color: string; bg: string; border: string; iconColor: string }> = {
   high: { label: 'Alta', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-l-4 border-l-red-500', iconColor: 'fill-red-500' },
   medium: { label: 'Media', color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-l-4 border-l-amber-500', iconColor: 'fill-amber-500' },
