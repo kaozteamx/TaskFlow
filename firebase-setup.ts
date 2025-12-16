@@ -4,8 +4,12 @@ import {
   getAuth, 
   signInWithCustomToken as fbSignInWithCustomToken, 
   signInAnonymously as fbSignInAnonymously, 
+  signInWithPopup as fbSignInWithPopup,
+  GoogleAuthProvider,
+  signOut as fbSignOut,
   onAuthStateChanged as fbOnAuthStateChanged,
 } from 'firebase/auth';
+// @ts-ignore
 import { 
   getFirestore, 
   collection as fbCollection, 
@@ -29,16 +33,24 @@ export const __app_id = window.__app_id || 'taskflow-app';
 let firebaseConfig: any = null;
 let isDemoMode = true;
 
-try {
-    if (__firebase_config) {
-        firebaseConfig = JSON.parse(__firebase_config);
-        // Check if it's a real config or a placeholder
-        if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "demo-key" && firebaseConfig.projectId && firebaseConfig.projectId !== "demo-project") {
-            isDemoMode = false;
+// Check for forced offline mode via localStorage
+const forceOffline = typeof window !== 'undefined' ? localStorage.getItem('taskflow_force_offline') === 'true' : false;
+
+if (!forceOffline) {
+    try {
+        if (__firebase_config) {
+            firebaseConfig = JSON.parse(__firebase_config);
+            // Check if it's a real config or a placeholder
+            if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "demo-key" && firebaseConfig.projectId && firebaseConfig.projectId !== "demo-project") {
+                isDemoMode = false;
+            }
         }
+    } catch (e) {
+        console.warn("Error parsing Firebase config, falling back to Demo Mode", e);
+        isDemoMode = true;
     }
-} catch (e) {
-    console.warn("Error parsing Firebase config, falling back to Demo Mode", e);
+} else {
+    console.log("TaskFlow: Forced Offline Mode Active via LocalStorage");
     isDemoMode = true;
 }
 
@@ -59,6 +71,14 @@ const mockAuthImpl = {
         setTimeout(() => window.dispatchEvent(new Event('taskflow_auth_change')), 10);
         return { user };
     },
+    signInWithGoogle: async () => {
+        alert("El inicio de sesión con Google requiere configurar las credenciales de Firebase en index.html");
+        return null;
+    },
+    signOut: async () => {
+        // Mock sign out
+        window.location.reload();
+    },
     signInWithCustomToken: async (auth: any, token: string) => {
         const user = { uid: 'demo-user', isAnonymous: false };
         auth.currentUser = user;
@@ -66,7 +86,10 @@ const mockAuthImpl = {
         return { user };
     },
     onAuthStateChanged: (auth: any, cb: any) => {
-        cb(auth.currentUser || { uid: 'demo-user', isAnonymous: true }); // Auto-login in demo
+        // In demo mode, we simulate a user if needed, but for the new Login flow
+        // we start as null unless auto-login logic exists.
+        // For legacy demo purposes, we default to demo-user if requested
+        cb(auth.currentUser || { uid: 'demo-user', isAnonymous: true }); 
         const handler = () => cb(auth.currentUser);
         window.addEventListener('taskflow_auth_change', handler);
         return () => window.removeEventListener('taskflow_auth_change', handler);
@@ -174,6 +197,7 @@ const mockFirestoreImpl = {
 let app, auth: any, db: any;
 let signInAnonymously: any, signInWithCustomToken: any, onAuthStateChanged: any;
 let collection: any, addDoc: any, updateDoc: any, deleteDoc: any, doc: any, onSnapshot: any, query: any, serverTimestamp: any, writeBatch: any, getDocs: any;
+let signInWithGoogle: any, signOut: any;
 
 if (!IS_DEMO && firebaseConfig) {
     try {
@@ -185,6 +209,31 @@ if (!IS_DEMO && firebaseConfig) {
         signInAnonymously = fbSignInAnonymously;
         signInWithCustomToken = fbSignInWithCustomToken;
         onAuthStateChanged = fbOnAuthStateChanged;
+        
+        // Real Google Auth Implementation
+        signInWithGoogle = async () => {
+            const provider = new GoogleAuthProvider();
+            try {
+                const result = await fbSignInWithPopup(auth, provider);
+                return result.user;
+            } catch (error: any) {
+                console.error("Google Sign In Error", error);
+                
+                // Specific handling for Unauthorized Domain
+                if (error.code === 'auth/unauthorized-domain') {
+                    const currentDomain = window.location.hostname;
+                    console.error(`\n!!! DOMINIO NO AUTORIZADO (${currentDomain}) !!!\nAñádelo en Firebase Console -> Authentication -> Settings -> Authorized Domains\n`);
+                }
+                
+                throw error;
+            }
+        };
+
+        signOut = async () => {
+            await fbSignOut(auth);
+            window.location.reload();
+        };
+
         collection = fbCollection;
         addDoc = fbAddDoc;
         updateDoc = fbUpdateDoc;
@@ -203,6 +252,8 @@ if (!IS_DEMO && firebaseConfig) {
         signInAnonymously = mockAuthImpl.signInAnonymously;
         signInWithCustomToken = mockAuthImpl.signInWithCustomToken;
         onAuthStateChanged = mockAuthImpl.onAuthStateChanged;
+        signInWithGoogle = mockAuthImpl.signInWithGoogle;
+        signOut = mockAuthImpl.signOut;
         collection = mockFirestoreImpl.collection;
         addDoc = mockFirestoreImpl.addDoc;
         updateDoc = mockFirestoreImpl.updateDoc;
@@ -221,6 +272,8 @@ if (!IS_DEMO && firebaseConfig) {
     signInAnonymously = mockAuthImpl.signInAnonymously;
     signInWithCustomToken = mockAuthImpl.signInWithCustomToken;
     onAuthStateChanged = mockAuthImpl.onAuthStateChanged;
+    signInWithGoogle = mockAuthImpl.signInWithGoogle;
+    signOut = mockAuthImpl.signOut;
     collection = mockFirestoreImpl.collection;
     addDoc = mockFirestoreImpl.addDoc;
     updateDoc = mockFirestoreImpl.updateDoc;
@@ -234,6 +287,6 @@ if (!IS_DEMO && firebaseConfig) {
 }
 
 export { 
-    auth, db, signInAnonymously, signInWithCustomToken, onAuthStateChanged, 
+    auth, db, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithGoogle, signOut,
     collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, writeBatch, getDocs 
 };
