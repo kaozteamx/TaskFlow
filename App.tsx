@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   Plus, Loader2, Calendar as CalendarIcon, 
-  List, BarChart3, Search, FilterX, StickyNote, Flag, ExternalLink, Clock, LogOut, Layout,
-  AlertTriangle, Copy, Check, WifiOff
+  List, BarChart3, Search, FilterX, StickyNote, Flag, ExternalLink, Clock
 } from 'lucide-react';
 
 // --- Imports from Refactored Modules ---
-import { auth, db, signInAnonymously, signInWithGoogle, signOut, onAuthStateChanged, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, writeBatch, getDocs, IS_DEMO, __app_id } from './firebase-setup';
+import { auth, db, signInAnonymously, onAuthStateChanged, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, writeBatch, getDocs, IS_DEMO, __app_id } from './firebase-setup';
 import { Project, Task, NotificationType } from './types';
 import { 
   HOME_VIEW, safeDate, formatDate, calculateNextDueDate, calculateDuration 
@@ -31,8 +30,6 @@ const App = () => {
   const [isDark, setIsDark] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [loading, setLoading] = useState(true);
-  const [authLoading, setAuthLoading] = useState(true); 
-  const [isLoggingIn, setIsLoggingIn] = useState(false); // Estado para el botón de login
   const [notification, setNotification] = useState<NotificationType | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [checklistModalTask, setChecklistModalTask] = useState<Task | null>(null);
@@ -66,7 +63,6 @@ const App = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importPendingDataRef = useRef<any>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   // Sync authUser to user
   useEffect(() => { setUser(authUser); }, [authUser]);
@@ -74,8 +70,9 @@ const App = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u: any) => {
       setAuthUser(u);
-      setAuthLoading(false); // Auth check complete
-      if (u) setIsLoggingIn(false); // Si entra usuario, dejamos de cargar login
+      if (!u) {
+        signInAnonymously(auth).catch((e: any) => console.error(e));
+      }
     });
     return unsubscribe;
   }, []);
@@ -87,16 +84,11 @@ const App = () => {
           return collection(db, 'artifacts', __app_id, 'public', 'data', `${collectionName}_${customUid}`);
       }
       if (!authUser?.uid) return collection(db, collectionName); 
-      // Esta línea es la clave: guarda los datos anidados bajo el UID del usuario de Google
       return collection(db, 'artifacts', __app_id, 'users', authUser.uid, collectionName);
   };
 
   useEffect(() => {
-    // Si no hay usuario y no estamos en demo pura (mock local), no cargamos datos
-    if (!userId && !IS_DEMO) {
-        setLoading(false);
-        return;
-    }
+    if (!userId && !IS_DEMO) return;
     
     const targetProjectsRef = userId ? getCollectionRef('projects') : collection(db, 'projects');
     const targetTasksRef = userId ? getCollectionRef('tasks') : collection(db, 'tasks');
@@ -378,13 +370,8 @@ const App = () => {
   const handleActivateCloudMode = async () => {
       if (!authUser?.uid) return;
       try {
-          // Copiar datos del espacio privado (uid) al espacio público (uid con sufijo) para compartir
           const projectsSnap = await getDocs(getCollectionRef('projects'));
           const tasksSnap = await getDocs(getCollectionRef('tasks'));
-          
-          // Nota: El "modo nube" en este contexto crea una copia en una ruta pública 
-          // para compartir via ID. Si ya estás logueado con Google, ya estás "en la nube"
-          // pero en tu espacio privado.
           const targetSuffix = authUser.uid;
           
           const chunks = []; let currentBatch = writeBatch(db); let count = 0;
@@ -406,7 +393,7 @@ const App = () => {
           if (count > 0) chunks.push(currentBatch);
           await Promise.all(chunks.map((b: any) => b.commit()));
           handleSetCustomId(authUser.uid);
-          setNotification({ type: 'success', message: 'Modo Compartido Activado.' });
+          setNotification({ type: 'success', message: 'Modo Nube Activado.' });
       } catch (error: any) { 
           setNotification({ type: 'error', message: 'Error: ' + error.message }); 
       }
@@ -520,34 +507,6 @@ const App = () => {
       } catch (error) { console.error(error); } 
   };
   
-  const handleSignOut = async () => {
-      if (IS_DEMO) localStorage.removeItem('taskflow_force_offline');
-      try {
-          await signOut();
-          setAuthUser(null);
-      } catch (error) {
-          console.error("Error signing out", error);
-      }
-  };
-
-  const handleLogin = async () => {
-      setIsLoggingIn(true);
-      try {
-          await signInWithGoogle();
-      } catch (error: any) {
-          setIsLoggingIn(false);
-          if (error.code === 'auth/unauthorized-domain') {
-              setNotification({ type: 'warning', message: 'Dominio no autorizado. Activando modo offline...' });
-              localStorage.setItem('taskflow_force_offline', 'true');
-              setTimeout(() => window.location.reload(), 1500);
-          } else if (error.code === 'auth/popup-closed-by-user') {
-              setNotification({ type: 'info', message: 'Inicio de sesión cancelado.' });
-          } else {
-              setNotification({ type: 'error', message: 'No se pudo iniciar sesión. Verifica la consola.' });
-          }
-      }
-  };
-
   const activeRootTasks = useMemo(() => {
     let filtered = tasks.filter(t => !t.parentTaskId);
     
@@ -597,91 +556,9 @@ const App = () => {
   
   const completionRate = activeRootTasks.length > 0 ? Math.round((activeRootTasks.filter(t=>t.completed).length / activeRootTasks.length) * 100) : 0;
 
-  // --- Auth & Loading UI ---
-
-  if (authLoading) return (
-      <div className={`flex items-center justify-center h-screen ${isDark ? 'bg-[#09090b] text-white' : 'bg-gray-50'}`}>
-          <Loader2 className="animate-spin w-8 h-8 text-emerald-500" />
-      </div>
-  );
-
-  // LOGIN SCREEN
-  if (!authUser && !IS_DEMO) {
-      const currentDomain = window.location.hostname;
-      
-      const handleCopyDomain = () => {
-          navigator.clipboard.writeText(currentDomain);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-      };
-
-      return (
-          <div className={`flex flex-col items-center justify-center h-screen w-full px-4 ${isDark ? 'bg-[#09090b] text-white' : 'bg-gray-50 text-gray-900'}`}>
-              <div className="w-full max-w-sm text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-2xl shadow-emerald-900/40 text-white mx-auto mb-6">
-                        <Layout size={32} />
-                  </div>
-                  <h1 className="text-3xl font-bold mb-2">Bienvenido a TaskFlow</h1>
-                  <p className={`mb-8 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
-                      Organiza tus tareas, gestiona tu tiempo y sincroniza tus proyectos en la nube.
-                  </p>
-                  
-                  <button 
-                    onClick={handleLogin}
-                    disabled={isLoggingIn}
-                    className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-3 transition-all ${isDark ? 'bg-white text-black hover:bg-gray-200' : 'bg-black text-white hover:bg-gray-800'} ${isLoggingIn ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  >
-                      {isLoggingIn ? <Loader2 size={20} className="animate-spin" /> : <img src="https://www.google.com/favicon.ico" alt="G" className="w-5 h-5" />}
-                      {isLoggingIn ? 'Iniciando sesión...' : 'Continuar con Google'}
-                  </button>
-                  
-                  {/* BUTTON TO BYPASS LOGIN (FORCE OFFLINE) */}
-                  <button 
-                    onClick={() => { localStorage.setItem('taskflow_force_offline', 'true'); window.location.reload(); }}
-                    className={`mt-3 w-full py-3 rounded-xl font-bold flex items-center justify-center gap-3 transition-all ${isDark ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}
-                  >
-                    <WifiOff size={20} />
-                    Usar Modo Offline
-                  </button>
-
-                  <p className={`mt-6 text-xs ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>
-                      Si no has configurado Firebase, la app funcionará en modo Demo local.
-                  </p>
-
-                  {/* DOMAIN AUTHORIZATION HELPER */}
-                  <div className="mt-8 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-left w-full">
-                        <h3 className="text-xs font-bold text-amber-600 dark:text-amber-500 uppercase mb-2 flex items-center gap-1">
-                             <AlertTriangle size={12} /> Configuración Requerida
-                        </h3>
-                        <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-2">
-                            Para usar Google Login, debes autorizar este dominio en Firebase:
-                        </p>
-                        <div className="flex items-center gap-2 bg-white dark:bg-black/20 p-2 rounded border border-amber-500/10 mb-2">
-                             <code className="text-xs font-mono flex-1 truncate select-all">{currentDomain}</code>
-                             <button 
-                                onClick={handleCopyDomain}
-                                className="text-[10px] font-bold px-2 py-1 rounded bg-amber-500/20 text-amber-700 dark:text-amber-500 hover:bg-amber-500/30 transition-colors flex items-center gap-1"
-                             >
-                                 {copied ? <Check size={10} /> : <Copy size={10} />}
-                                 {copied ? 'Copiado' : 'Copiar'}
-                             </button>
-                        </div>
-                        <p className="text-[10px] text-zinc-500 dark:text-zinc-500">
-                             Ve a <strong>Authentication &gt; Settings &gt; Authorized Domains</strong>. O usa el <strong>Modo Offline</strong>.
-                        </p>
-                  </div>
-              </div>
-          </div>
-      );
-  }
-
-  // APP UI
   if (loading) return (
       <div className={`flex items-center justify-center h-screen ${isDark ? 'bg-[#09090b] text-white' : 'bg-gray-50'}`}>
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="animate-spin w-8 h-8 text-emerald-500" />
-            <p className="text-sm opacity-50">Sincronizando con la nube...</p>
-          </div>
+          <Loader2 className="animate-spin" />
       </div>
   );
 
@@ -719,45 +596,21 @@ const App = () => {
                     {activeProject.name}
                 </h1>
                 
-                <div className="flex items-center gap-3">
-                    {/* View Switcher */}
-                    <div className={`flex items-center p-1 rounded-lg border ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'}`}>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-xs font-medium transition-all ${viewMode === 'list' ? (isDark ? 'bg-zinc-800 text-zinc-200 shadow-sm' : 'bg-gray-100 text-gray-800 shadow-sm') : (isDark ? 'text-zinc-600 hover:text-zinc-400' : 'text-gray-400 hover:text-gray-600')}`}
-                        >
-                            <List size={14} /> Lista
-                        </button>
-                        <div className={`w-px h-3 mx-1 ${isDark ? 'bg-zinc-800' : 'bg-gray-200'}`} />
-                        <button
-                            onClick={() => setViewMode('calendar')}
-                            className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-xs font-medium transition-all ${viewMode === 'calendar' ? (isDark ? 'bg-zinc-800 text-zinc-200 shadow-sm' : 'bg-gray-100 text-gray-800 shadow-sm') : (isDark ? 'text-zinc-600 hover:text-zinc-400' : 'text-gray-400 hover:text-gray-600')}`}
-                        >
-                            <CalendarIcon size={14} /> Calendario
-                        </button>
-                    </div>
-
-                    {/* User Profile / Logout */}
-                    {authUser && (
-                        <div className="flex items-center gap-2 border-l pl-3 ml-2 border-gray-200 dark:border-zinc-800">
-                             {authUser.photoURL && (
-                                 <img src={authUser.photoURL} alt="Avatar" className="w-7 h-7 rounded-full" />
-                             )}
-                             <button onClick={handleSignOut} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-red-900/30 text-zinc-500 hover:text-red-400' : 'hover:bg-red-50 text-gray-400 hover:text-red-500'}`} title="Cerrar Sesión">
-                                 <LogOut size={16} />
-                             </button>
-                        </div>
-                    )}
-                    {IS_DEMO && (
-                        <div className="flex items-center gap-2 border-l pl-3 ml-2 border-gray-200 dark:border-zinc-800">
-                             <button 
-                                onClick={() => { localStorage.removeItem('taskflow_force_offline'); window.location.reload(); }}
-                                className={`text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-all ${isDark ? 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-zinc-400' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-600'}`}
-                             >
-                                 Conectar Cuenta
-                             </button>
-                        </div>
-                    )}
+                {/* View Switcher */}
+                <div className={`flex items-center p-1 rounded-lg border ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'}`}>
+                    <button
+                        onClick={() => setViewMode('list')}
+                        className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-xs font-medium transition-all ${viewMode === 'list' ? (isDark ? 'bg-zinc-800 text-zinc-200 shadow-sm' : 'bg-gray-100 text-gray-800 shadow-sm') : (isDark ? 'text-zinc-600 hover:text-zinc-400' : 'text-gray-400 hover:text-gray-600')}`}
+                    >
+                        <List size={14} /> Lista
+                    </button>
+                    <div className={`w-px h-3 mx-1 ${isDark ? 'bg-zinc-800' : 'bg-gray-200'}`} />
+                    <button
+                        onClick={() => setViewMode('calendar')}
+                        className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-xs font-medium transition-all ${viewMode === 'calendar' ? (isDark ? 'bg-zinc-800 text-zinc-200 shadow-sm' : 'bg-gray-100 text-gray-800 shadow-sm') : (isDark ? 'text-zinc-600 hover:text-zinc-400' : 'text-gray-400 hover:text-gray-600')}`}
+                    >
+                        <CalendarIcon size={14} /> Calendario
+                    </button>
                 </div>
             </div>
 
@@ -868,7 +721,7 @@ const App = () => {
                                     onClick={setEditingTask} 
                                     onDelete={handleDeleteTask} 
                                     isDark={isDark} 
-                                    showProjectName={activeProject.id === HOME_VIEW.id ? (projects.find(p=>p.id===t.projectId)?.name || null) : null}
+                                    showProjectName={activeProject.id === HOME_VIEW.id ? projects.find(p=>p.id===t.projectId)?.name : null}
                                     onOpenChecklist={setChecklistModalTask}
                                     onToggleReview={handleToggleReview}
                                     subtasksCount={subtasks.length}
@@ -889,7 +742,7 @@ const App = () => {
                                             onClick={setEditingTask} 
                                             onDelete={handleDeleteTask} 
                                             isDark={isDark} 
-                                            showProjectName={activeProject.id === HOME_VIEW.id ? (projects.find(p=>p.id===t.projectId)?.name || null) : null}
+                                            showProjectName={activeProject.id === HOME_VIEW.id ? projects.find(p=>p.id===t.projectId)?.name : null}
                                             onOpenChecklist={setChecklistModalTask}
                                             onToggleReview={handleToggleReview}
                                             subtasksCount={subtasks.length}
