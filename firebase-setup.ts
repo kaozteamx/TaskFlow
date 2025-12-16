@@ -10,19 +10,7 @@ import {
   onAuthStateChanged as fbOnAuthStateChanged,
 } from 'firebase/auth';
 // @ts-ignore
-import { 
-  getFirestore, 
-  collection as fbCollection, 
-  addDoc as fbAddDoc, 
-  updateDoc as fbUpdateDoc, 
-  deleteDoc as fbDeleteDoc, 
-  doc as fbDoc, 
-  onSnapshot as fbOnSnapshot, 
-  query as fbQuery, 
-  serverTimestamp as fbServerTimestamp,
-  writeBatch as fbWriteBatch, 
-  getDocs as fbGetDocs,
-} from 'firebase/firestore';
+import { getFirestore, collection as fbCollection, addDoc as fbAddDoc, updateDoc as fbUpdateDoc, deleteDoc as fbDeleteDoc, doc as fbDoc, onSnapshot as fbOnSnapshot, query as fbQuery, serverTimestamp as fbServerTimestamp, writeBatch as fbWriteBatch, getDocs as fbGetDocs } from 'firebase/firestore';
 
 // --- Globals via Window (injected in index.html) ---
 declare const window: any;

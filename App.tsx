@@ -537,7 +537,9 @@ const App = () => {
       } catch (error: any) {
           setIsLoggingIn(false);
           if (error.code === 'auth/unauthorized-domain') {
-              setNotification({ type: 'error', message: 'Dominio no autorizado (revisa el panel amarillo)' });
+              setNotification({ type: 'warning', message: 'Dominio no autorizado. Activando modo offline...' });
+              localStorage.setItem('taskflow_force_offline', 'true');
+              setTimeout(() => window.location.reload(), 1500);
           } else if (error.code === 'auth/popup-closed-by-user') {
               setNotification({ type: 'info', message: 'Inicio de sesión cancelado.' });
           } else {
@@ -665,7 +667,7 @@ const App = () => {
                              </button>
                         </div>
                         <p className="text-[10px] text-zinc-500 dark:text-zinc-500">
-                             Ve a <strong>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized Domains</strong> y añade la URL de arriba.
+                             Ve a <strong>Authentication &gt; Settings &gt; Authorized Domains</strong>. O usa el <strong>Modo Offline</strong>.
                         </p>
                   </div>
               </div>
