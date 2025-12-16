@@ -22,6 +22,9 @@ export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjec
 
   const daysOpen = getDaysOpen(task.createdAt);
   
+  // Completion Date Logic
+  const completedDate = task.completed && task.completedAt ? safeDate(task.completedAt) : null;
+  
   // Calculate if reviewed today
   const lastReviewedDate = task.lastReviewedAt ? new Date(task.lastReviewedAt) : null;
   const today = new Date();
@@ -29,18 +32,23 @@ export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjec
                           lastReviewedDate.getDate() === today.getDate() &&
                           lastReviewedDate.getMonth() === today.getMonth() &&
                           lastReviewedDate.getFullYear() === today.getFullYear();
-                          
-  // Completion Date Logic
-  const completedDate = task.completed && task.completedAt ? safeDate(task.completedAt) : null;
+
+  const handleDragStart = (e: React.DragEvent) => {
+      // Allows dragging this task to the Details Panel to become a subtask
+      e.dataTransfer.setData('taskId', task.id);
+      e.dataTransfer.effectAllowed = 'move';
+  };
 
   return (
     <div 
+        draggable={true}
+        onDragStart={handleDragStart}
         onMouseDown={(e) => e.stopPropagation()}
         onClick={() => onClick(task)} 
         data-task-id={task.id} 
         className={`group flex items-start gap-4 p-4 rounded-xl border mb-3 cursor-pointer transition-all duration-200 ${priorityStyle.border} ${task.completed ? isDark ? 'bg-zinc-900/30 border-zinc-800/50 opacity-50' : 'bg-gray-50 border-gray-100 opacity-60' : isDark ? 'bg-[#18181b] border-zinc-800 hover:border-zinc-700' : 'bg-white border-gray-200 hover:border-emerald-200'}`}
     >
-      <div className={`mt-1 ${isDark ? 'text-zinc-600' : 'text-gray-300'} cursor-move opacity-0 group-hover:opacity-50 hover:opacity-100`}><GripVertical size={16} /></div>
+      <div className={`mt-1 ${isDark ? 'text-zinc-600' : 'text-gray-300'} cursor-grab opacity-0 group-hover:opacity-50 hover:opacity-100`}><GripVertical size={16} /></div>
       
       {/* Daily Review Dot */}
       <button 

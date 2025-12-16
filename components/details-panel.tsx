@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, CheckCircle2, Circle, Flag, Calendar as CalendarIcon, Repeat, ClipboardList, Plus, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, CheckCircle2, Circle, Flag, Calendar as CalendarIcon, Repeat, ClipboardList, Plus, Trash2, ArrowDownToLine } from 'lucide-react';
 import { Task } from '../types';
 import { PRIORITIES, TIME_SLOTS, RECURRENCE_OPTIONS, formatCreationDate, getEndTime, calculateDuration } from '../utils';
 import { CustomTimeSelect, CustomSelect } from './ui-elements';
@@ -15,12 +15,34 @@ interface DetailsPanelProps {
     handleAddSubtask: (e: React.FormEvent) => void;
     setChecklistModalTask: (t: Task) => void;
     panelRef: React.RefObject<HTMLDivElement | null>;
+    onReparentTask?: (childId: string, parentId: string) => void;
 }
 
 export const DetailsPanel = ({
     editingTask, setEditingTask, isDark, handleToggleTask, handleUpdateTaskDetail,
-    handleDeleteTask, currentTaskSubtasks, handleAddSubtask, setChecklistModalTask, panelRef
+    handleDeleteTask, currentTaskSubtasks, handleAddSubtask, setChecklistModalTask, panelRef, onReparentTask
 }: DetailsPanelProps) => {
+    const [isDragOver, setIsDragOver] = useState(false);
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragOver(true);
+    };
+
+    const handleDragLeave = () => {
+        setIsDragOver(false);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const childTaskId = e.dataTransfer.getData('taskId');
+        
+        if (childTaskId && editingTask && childTaskId !== editingTask.id && onReparentTask) {
+            onReparentTask(childTaskId, editingTask.id);
+        }
+    };
+
     return (
         <div ref={panelRef} className={`absolute inset-y-0 right-0 w-[400px] border-l shadow-2xl transform transition-transform duration-300 z-30 flex flex-col ${editingTask ? 'translate-x-0' : 'translate-x-full'} ${isDark ? 'bg-[#18181b] border-zinc-800' : 'bg-white border-gray-200'}`}>
             {editingTask && (
@@ -125,8 +147,21 @@ export const DetailsPanel = ({
                             <label className={`text-[10px] font-bold uppercase ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Subtareas</label>
                             <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-gray-100 text-gray-500'}`}>{currentTaskSubtasks.length}</span>
                         </div>
-                        <div className="space-y-1 mb-3">
-                            {currentTaskSubtasks.map(sub => (
+                        
+                        {/* DROP ZONE CONTAINER */}
+                        <div 
+                            className={`space-y-1 mb-3 rounded-lg transition-all duration-300 ${isDragOver ? (isDark ? 'bg-emerald-500/10 border-emerald-500/50 border-2 border-dashed p-4 min-h-[60px]' : 'bg-emerald-50 border-emerald-300 border-2 border-dashed p-4 min-h-[60px]') : 'border-2 border-transparent'}`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                        >
+                            {isDragOver && (
+                                <div className="flex items-center justify-center h-full text-emerald-500 gap-2 text-sm font-medium pointer-events-none">
+                                    <ArrowDownToLine size={18} /> Soltar para asignar
+                                </div>
+                            )}
+
+                            {!isDragOver && currentTaskSubtasks.map((sub) => (
                                 <div key={sub.id} className={`group flex items-center gap-2 p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-zinc-800/50' : 'hover:bg-gray-50'}`}>
                                     <button onClick={() => handleToggleTask(sub)} className={`${sub.completed ? 'text-emerald-500' : isDark ? 'text-zinc-600 hover:text-emerald-500' : 'text-gray-400 hover:text-emerald-500'}`}>
                                         {sub.completed ? <CheckCircle2 size={16} /> : <Circle size={16} />}

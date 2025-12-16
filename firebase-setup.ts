@@ -5,6 +5,9 @@ import {
   signInWithCustomToken as fbSignInWithCustomToken, 
   signInAnonymously as fbSignInAnonymously, 
   onAuthStateChanged as fbOnAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut as fbSignOut
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -173,6 +176,7 @@ const mockFirestoreImpl = {
 // --- Initialization Logic ---
 let app, auth: any, db: any;
 let signInAnonymously: any, signInWithCustomToken: any, onAuthStateChanged: any;
+let signInWithGoogle: any, signOut: any;
 let collection: any, addDoc: any, updateDoc: any, deleteDoc: any, doc: any, onSnapshot: any, query: any, serverTimestamp: any, writeBatch: any, getDocs: any;
 
 if (!IS_DEMO && firebaseConfig) {
@@ -185,6 +189,13 @@ if (!IS_DEMO && firebaseConfig) {
         signInAnonymously = fbSignInAnonymously;
         signInWithCustomToken = fbSignInWithCustomToken;
         onAuthStateChanged = fbOnAuthStateChanged;
+        
+        signInWithGoogle = async () => {
+            const provider = new GoogleAuthProvider();
+            return signInWithPopup(auth, provider);
+        };
+        signOut = () => fbSignOut(auth);
+
         collection = fbCollection;
         addDoc = fbAddDoc;
         updateDoc = fbUpdateDoc;
@@ -197,12 +208,24 @@ if (!IS_DEMO && firebaseConfig) {
         getDocs = fbGetDocs;
     } catch (e) {
         console.error("Firebase Init Failed, falling back to mock", e);
-        // Fallback logic duplicated below
+        // Fallback logic
         auth = { currentUser: null };
         db = { type: 'mock_db' };
         signInAnonymously = mockAuthImpl.signInAnonymously;
         signInWithCustomToken = mockAuthImpl.signInWithCustomToken;
         onAuthStateChanged = mockAuthImpl.onAuthStateChanged;
+        
+        signInWithGoogle = async () => {
+            const user = { uid: 'demo-google-user', displayName: 'Demo User', photoURL: 'https://ui-avatars.com/api/?name=Demo+User' };
+            auth.currentUser = user;
+            window.dispatchEvent(new Event('taskflow_auth_change'));
+            return { user };
+        };
+        signOut = async () => {
+            auth.currentUser = null;
+            window.dispatchEvent(new Event('taskflow_auth_change'));
+        };
+
         collection = mockFirestoreImpl.collection;
         addDoc = mockFirestoreImpl.addDoc;
         updateDoc = mockFirestoreImpl.updateDoc;
@@ -221,6 +244,18 @@ if (!IS_DEMO && firebaseConfig) {
     signInAnonymously = mockAuthImpl.signInAnonymously;
     signInWithCustomToken = mockAuthImpl.signInWithCustomToken;
     onAuthStateChanged = mockAuthImpl.onAuthStateChanged;
+    
+    signInWithGoogle = async () => {
+        const user = { uid: 'demo-google-user', displayName: 'Demo User', photoURL: 'https://ui-avatars.com/api/?name=Demo+User' };
+        auth.currentUser = user;
+        window.dispatchEvent(new Event('taskflow_auth_change'));
+        return { user };
+    };
+    signOut = async () => {
+        auth.currentUser = null;
+        window.dispatchEvent(new Event('taskflow_auth_change'));
+    };
+
     collection = mockFirestoreImpl.collection;
     addDoc = mockFirestoreImpl.addDoc;
     updateDoc = mockFirestoreImpl.updateDoc;
@@ -234,6 +269,6 @@ if (!IS_DEMO && firebaseConfig) {
 }
 
 export { 
-    auth, db, signInAnonymously, signInWithCustomToken, onAuthStateChanged, 
+    auth, db, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithGoogle, signOut,
     collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, writeBatch, getDocs 
 };
