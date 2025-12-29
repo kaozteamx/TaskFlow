@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Layout, Plus, FolderOpen, Edit2, Trash2, CloudCog, Download, Upload, 
   Loader2, SidebarClose, SidebarOpen, Sun, Moon, FileSpreadsheet, Home,
-  ChevronDown, ChevronRight
+  ChevronDown, ChevronRight, Waves
 } from 'lucide-react';
 import { Project } from '../types';
 import { HOME_VIEW, PROJECT_COLORS } from '../utils';
@@ -40,6 +40,12 @@ export const Sidebar = ({
     fileInputRef, handleFileSelect, onFocusComplete, onMoveTaskToProject
 }: SidebarProps) => {
     const [dragOverProjectId, setDragOverProjectId] = useState<string | null>(null);
+    const [isNoisePlaying, setIsNoisePlaying] = useState(false);
+    
+    // Web Audio API refs
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
+    const gainNodeRef = useRef<GainNode | null>(null);
 
     const handleDragOver = (e: React.DragEvent, projectId: string) => {
         e.preventDefault();
@@ -56,6 +62,109 @@ export const Sidebar = ({
         const taskId = e.dataTransfer.getData('taskId');
         if (taskId) {
             onMoveTaskToProject(taskId, projectId);
+        }
+    };
+
+    // Clean up audio on unmount
+    useEffect(() => {
+        return () => {
+            if (sourceNodeRef.current) sourceNodeRef.current.stop();
+            if (audioContextRef.current) audioContextRef.current.close();
+        };
+    }, []);
+
+    const toggleNoise = () => {
+        if (isNoisePlaying) {
+            // Stop Audio
+            if (gainNodeRef.current) {
+                // Fade out to prevent popping
+                const currentTime = audioContextRef.current?.currentTime || 0;
+                gainNodeRef.current.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.5);
+                setTimeout(() => {
+                    if (sourceNodeRef.current) {
+                        sourceNodeRef.current.stop();
+                        sourceNodeRef.current = null;
+                    }
+                    setIsNoisePlaying(false);
+                }, 500);
+            } else {
+                 if (sourceNodeRef.current) sourceNodeRef.current.stop();
+                 setIsNoisePlaying(false);
+            }
+        } else {
+            // Start Audio
+            try {
+                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+                if (!audioContextRef.current) {
+                    audioContextRef.current = new AudioContextClass();
+                }
+                const ctx = audioContextRef.current;
+                
+                // Resume context if suspended (browser policy)
+                if (ctx.state === 'suspended') {
+                    ctx.resume();
+                }
+
+                // 1. Generate Pink Noise Buffer (Paul Kellett's method)
+                const bufferSize = ctx.sampleRate * 4; // 4 seconds loop for better variety
+                const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                
+                let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    b0 = 0.99886 * b0 + white * 0.0555179;
+                    b1 = 0.99332 * b1 + white * 0.0750759;
+                    b2 = 0.96900 * b2 + white * 0.1538520;
+                    b3 = 0.86650 * b3 + white * 0.3104856;
+                    b4 = 0.55000 * b4 + white * 0.5329522;
+                    b5 = -0.7616 * b5 - white * 0.0168980;
+                    output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+                    output[i] *= 0.11; // Compensate for gain
+                    b6 = white * 0.115926;
+                }
+                
+                const noiseSource = ctx.createBufferSource();
+                noiseSource.buffer = noiseBuffer;
+                noiseSource.loop = true;
+
+                // 2. Create "Warmth" Filter (LowPass)
+                // Cuts off harsh high frequencies to make it "warm"
+                const warmFilter = ctx.createBiquadFilter();
+                warmFilter.type = 'lowpass';
+                warmFilter.frequency.value = 3500; // Soften anything above 3.5kHz
+                warmFilter.Q.value = 0.5;
+
+                // 3. Create "432Hz Boost" Filter (Peaking)
+                // Adds resonant energy specifically at 432Hz
+                const boostFilter = ctx.createBiquadFilter();
+                boostFilter.type = 'peaking';
+                boostFilter.frequency.value = 432;
+                boostFilter.Q.value = 1.0; // Width of the boost (1.0 is fairly broad and musical)
+                boostFilter.gain.value = 12; // Significant boost (+12dB) at this frequency
+
+                // 4. Gain Node (Volume)
+                const gainNode = ctx.createGain();
+                gainNode.gain.value = 0.1; // Reduced slightly to account for the boost filter
+                
+                // Connect the Graph: Source -> Boost -> Warmth -> Gain -> Out
+                noiseSource.connect(boostFilter);
+                boostFilter.connect(warmFilter);
+                warmFilter.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                
+                noiseSource.start();
+                
+                // Fade in
+                gainNode.gain.setValueAtTime(0, ctx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 1);
+
+                sourceNodeRef.current = noiseSource;
+                gainNodeRef.current = gainNode;
+                setIsNoisePlaying(true);
+            } catch (e) {
+                console.error("Audio generation failed", e);
+            }
         }
     };
 
@@ -138,6 +247,7 @@ export const Sidebar = ({
                     <button onClick={() => setIsCloudSyncModalOpen(true)} className={`flex items-center justify-center p-2 rounded-lg transition-all ${isDark ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`} title="Sincronización Nube"><CloudCog size={18} /></button>
                     {isImporting ? (<div className="flex justify-center p-2"><Loader2 size={18} className="animate-spin text-emerald-500" /></div>) : (
                         <>
+                            <button onClick={toggleNoise} className={`flex items-center justify-center p-2 rounded-lg transition-all ${isNoisePlaying ? 'bg-rose-500/20 text-rose-500 animate-pulse' : isDark ? 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200'}`} title={isNoisePlaying ? "Detener Ruido Rosa (432Hz)" : "Reproducir Ruido Rosa (432Hz Focus)"}><Waves size={18} /></button>
                             <button onClick={handleExportPomodoroCSV} disabled={isExportingCSV} className={`flex items-center justify-center p-2 rounded-lg transition-colors ${isDark ? 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200'}`} title="Reporte CSV Pomodoros">{isExportingCSV ? <Loader2 size={18} className="animate-spin" /> : <FileSpreadsheet size={18} />}</button>
                             <button onClick={handleExportData} disabled={isBackingUp} className={`flex items-center justify-center p-2 rounded-lg transition-colors ${isDark ? 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200'}`} title="Descargar Backup">{isBackingUp ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}</button>
                             <label className={`flex items-center justify-center p-2 rounded-lg cursor-pointer transition-colors ${isDark ? 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200'}`} title="Restaurar Backup"><Upload size={18} /><input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleFileSelect} /></label>
