@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { 
   Plus, Loader2, Calendar as CalendarIcon, 
   List, BarChart3, Search, FilterX, StickyNote, Flag, ExternalLink, Clock, LogOut, Layout,
-  AlertTriangle, Copy, Check, WifiOff
+  AlertTriangle, Copy, Check, WifiOff, Link, ChevronUp, ChevronDown
 } from 'lucide-react';
 
 // --- Imports from Refactored Modules ---
@@ -46,6 +46,7 @@ const App = () => {
 
   // List View States
   const [projectNotes, setProjectNotes] = useState('');
+  const [isResourcesExpanded, setIsResourcesExpanded] = useState(false);
   const prevProjectIdRef = useRef<string|null>(null);
   const [sortBy, setSortBy] = useState('priority');
   const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null);
@@ -134,6 +135,7 @@ const App = () => {
       // Reset filters when changing project
       setSelectedDateFilter(null);
       setSearchQuery('');
+      setIsResourcesExpanded(false);
   }, [activeProject]);
 
   // Handle click outside details panel
@@ -791,12 +793,38 @@ const App = () => {
                     {activeProject ? (
                         <div className={`hidden lg:flex lg:w-80 border-r flex-col overflow-y-auto custom-scrollbar p-6 ${isDark ? 'border-zinc-800 bg-[#0c0c0e]' : 'border-gray-200 bg-gray-50'}`}>
                             {activeProject.links && activeProject.links.length > 0 && (
-                                <div className="mb-6 flex flex-wrap gap-2">
-                                    {activeProject.links.map((link, idx) => (
-                                        <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-1.5 text-xs font-medium transition-colors py-1.5 px-3 rounded-lg border ${isDark ? 'border-zinc-800 bg-zinc-900 text-emerald-400 hover:bg-zinc-800' : 'border-gray-200 bg-white text-emerald-600 hover:bg-gray-50'}`}>
-                                            <ExternalLink size={12} /> {link.name || 'Link'}
-                                        </a>
-                                    ))}
+                                <div className="mb-6">
+                                    <button 
+                                        onClick={() => setIsResourcesExpanded(!isResourcesExpanded)}
+                                        className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${isDark ? 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <div className={`p-1.5 rounded-md ${isDark ? 'bg-emerald-500/10 text-emerald-500' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                <Link size={14} />
+                                            </div>
+                                            <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-gray-600'}`}>
+                                                Recursos ({activeProject.links.length})
+                                            </span>
+                                        </div>
+                                        {isResourcesExpanded ? <ChevronUp size={14} className={isDark ? 'text-zinc-500' : 'text-gray-400'}/> : <ChevronDown size={14} className={isDark ? 'text-zinc-500' : 'text-gray-400'}/>}
+                                    </button>
+                                    
+                                    {isResourcesExpanded && (
+                                        <div className={`mt-2 flex flex-col gap-1 p-1 rounded-lg border animate-in fade-in slide-in-from-top-2 duration-200 ${isDark ? 'border-zinc-800 bg-zinc-900/30' : 'border-gray-100 bg-gray-50/50'}`}>
+                                            {activeProject.links.map((link, idx) => (
+                                                <a 
+                                                    key={idx} 
+                                                    href={link.url} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer" 
+                                                    className={`flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${isDark ? 'text-zinc-300 hover:bg-zinc-800 hover:text-emerald-400' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:text-emerald-600'}`}
+                                                >
+                                                    <span className="truncate">{link.name || 'Enlace sin nombre'}</span>
+                                                    <ExternalLink size={12} className="opacity-50" />
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                             
