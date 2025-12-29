@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Layout, Plus, FolderOpen, Edit2, Trash2, CloudCog, Download, Upload, 
   Loader2, SidebarClose, SidebarOpen, Sun, Moon, FileSpreadsheet, Home,
@@ -29,6 +29,7 @@ interface SidebarProps {
     fileInputRef: React.RefObject<HTMLInputElement | null>;
     handleFileSelect: (e: any) => void;
     onFocusComplete: (minutes: number) => void;
+    onMoveTaskToProject: (taskId: string, projectId: string) => void;
 }
 
 export const Sidebar = ({
@@ -36,8 +37,28 @@ export const Sidebar = ({
     activeProject, setActiveProject, projects, isProjectsExpanded, setIsProjectsExpanded,
     openProjectModal, handleDeleteProject, setIsCloudSyncModalOpen,
     isImporting, isExportingCSV, handleExportPomodoroCSV, isBackingUp, handleExportData,
-    fileInputRef, handleFileSelect, onFocusComplete
+    fileInputRef, handleFileSelect, onFocusComplete, onMoveTaskToProject
 }: SidebarProps) => {
+    const [dragOverProjectId, setDragOverProjectId] = useState<string | null>(null);
+
+    const handleDragOver = (e: React.DragEvent, projectId: string) => {
+        e.preventDefault();
+        setDragOverProjectId(projectId);
+    };
+
+    const handleDragLeave = () => {
+        setDragOverProjectId(null);
+    };
+
+    const handleDrop = (e: React.DragEvent, projectId: string) => {
+        e.preventDefault();
+        setDragOverProjectId(null);
+        const taskId = e.dataTransfer.getData('taskId');
+        if (taskId) {
+            onMoveTaskToProject(taskId, projectId);
+        }
+    };
+
     return (
         <div className={`flex flex-col border-r transition-all duration-300 flex-shrink-0 ${isSidebarExpanded ? 'w-64' : 'w-16'} ${isDark ? 'border-zinc-800 bg-[#09090b]' : 'border-gray-200 bg-gray-50'}`}>
             <div className="p-4 flex flex-col gap-6">
@@ -79,9 +100,17 @@ export const Sidebar = ({
                          <div className="space-y-0.5">
                              {projects.filter(p => p.id !== HOME_VIEW.id).map(p => {
                                  const colorDot = PROJECT_COLORS[p.color || 'gray']?.dot || 'bg-zinc-400';
+                                 const isHovered = dragOverProjectId === p.id;
+                                 
                                  return (
-                                 <div key={p.id} className="group relative">
-                                     <button onClick={() => setActiveProject(p)} className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${activeProject.id === p.id ? 'bg-emerald-600/10 text-emerald-500' : isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-200'}`}>
+                                 <div 
+                                    key={p.id} 
+                                    className="group relative"
+                                    onDragOver={(e) => handleDragOver(e, p.id)}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={(e) => handleDrop(e, p.id)}
+                                 >
+                                     <button onClick={() => setActiveProject(p)} className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${isHovered ? 'bg-emerald-500/20 border border-emerald-500/50' : activeProject.id === p.id ? 'bg-emerald-600/10 text-emerald-500' : isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-200'}`}>
                                          {/* Use color dot instead of generic folder icon if collapsed, or just next to name */}
                                          <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorDot}`} />
                                          {isSidebarExpanded && <span className="text-sm truncate pr-12">{p.name}</span>}

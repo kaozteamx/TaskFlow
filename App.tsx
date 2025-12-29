@@ -201,6 +201,17 @@ const App = () => {
       await updateDoc(doc(ref, childTaskId), { parentTaskId: newParentId });
       setNotification({ type: 'success', message: 'Subtarea asignada correctamente' });
   };
+  
+  const handleMoveTaskToProject = async (taskId: string, targetProjectId: string) => {
+      if (!taskId || !targetProjectId) return;
+      const ref = userId ? getCollectionRef('tasks') : collection(db, 'tasks');
+      await updateDoc(doc(ref, taskId), { projectId: targetProjectId });
+      setNotification({ type: 'success', message: 'Tarea movida de proyecto' });
+      // If the task was being edited, close it or update it locally to avoid confusion
+      if (editingTask && editingTask.id === taskId) {
+          setEditingTask(prev => prev ? ({...prev, projectId: targetProjectId}) : null);
+      }
+  };
 
   const handleToggleTask = async (task: Task) => {
       const ref = userId ? getCollectionRef('tasks') : collection(db, 'tasks');
@@ -720,6 +731,7 @@ const App = () => {
             fileInputRef={fileInputRef}
             handleFileSelect={handleFileSelect}
             onFocusComplete={handleFocusComplete}
+            onMoveTaskToProject={handleMoveTaskToProject}
        />
 
        {/* MAIN CONTENT AREA */}
