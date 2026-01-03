@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { 
   Plus, Loader2, Calendar as CalendarIcon, 
   List, BarChart3, Search, FilterX, StickyNote, Flag, ExternalLink, Clock, LogOut, Layout,
-  AlertTriangle, Copy, Check, WifiOff, Link, ChevronUp, ChevronDown
+  AlertTriangle, Copy, Check, WifiOff, Link, ChevronUp, ChevronDown, ChevronRight
 } from 'lucide-react';
 
 // --- Imports from Refactored Modules ---
@@ -47,6 +47,7 @@ const App = () => {
   // List View States
   const [projectNotes, setProjectNotes] = useState('');
   const [isResourcesExpanded, setIsResourcesExpanded] = useState(false);
+  const [isCompletedExpanded, setIsCompletedExpanded] = useState(false); // State for collapsible completed tasks
   const prevProjectIdRef = useRef<string|null>(null);
   const [sortBy, setSortBy] = useState('priority');
   const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null);
@@ -620,6 +621,8 @@ const App = () => {
   }, [tasks, editingTask]);
   
   const completionRate = activeRootTasks.length > 0 ? Math.round((activeRootTasks.filter(t=>t.completed).length / activeRootTasks.length) * 100) : 0;
+  
+  const completedTasks = useMemo(() => activeRootTasks.filter(t => t.completed), [activeRootTasks]);
 
   // --- Auth & Loading UI ---
 
@@ -926,27 +929,39 @@ const App = () => {
                                     subtasksCompletedCount={completedSubCount}
                                 />
                             )})}
-                            {activeRootTasks.filter(t=>t.completed).length > 0 && (
+                            
+                            {completedTasks.length > 0 && (
                                 <div className="pt-6">
-                                    <h3 className={`text-xs font-bold uppercase tracking-wider mb-4 ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>Completado</h3>
-                                    {activeRootTasks.filter(t=>t.completed).map(t => {
-                                        const subtasks = tasks.filter(sub => sub.parentTaskId === t.id);
-                                        const completedSubCount = subtasks.filter(sub => sub.completed).length;
-                                        return (
-                                        <TaskItem 
-                                            key={t.id} 
-                                            task={t} 
-                                            onToggle={handleToggleTask} 
-                                            onClick={setEditingTask} 
-                                            onDelete={handleDeleteTask} 
-                                            isDark={isDark} 
-                                            showProjectName={activeProject.id === HOME_VIEW.id ? (projects.find(p=>p.id===t.projectId)?.name || null) : null}
-                                            onOpenChecklist={setChecklistModalTask}
-                                            onToggleReview={handleToggleReview}
-                                            subtasksCount={subtasks.length}
-                                            subtasksCompletedCount={completedSubCount}
-                                        />
-                                    )})}
+                                    <button 
+                                        onClick={() => setIsCompletedExpanded(!isCompletedExpanded)}
+                                        className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider mb-4 transition-colors ${isDark ? 'text-zinc-600 hover:text-zinc-400' : 'text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        {isCompletedExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                        Completado ({completedTasks.length})
+                                    </button>
+                                    
+                                    {isCompletedExpanded && (
+                                        <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                                            {completedTasks.map(t => {
+                                                const subtasks = tasks.filter(sub => sub.parentTaskId === t.id);
+                                                const completedSubCount = subtasks.filter(sub => sub.completed).length;
+                                                return (
+                                                <TaskItem 
+                                                    key={t.id} 
+                                                    task={t} 
+                                                    onToggle={handleToggleTask} 
+                                                    onClick={setEditingTask} 
+                                                    onDelete={handleDeleteTask} 
+                                                    isDark={isDark} 
+                                                    showProjectName={activeProject.id === HOME_VIEW.id ? (projects.find(p=>p.id===t.projectId)?.name || null) : null}
+                                                    onOpenChecklist={setChecklistModalTask}
+                                                    onToggleReview={handleToggleReview}
+                                                    subtasksCount={subtasks.length}
+                                                    subtasksCompletedCount={completedSubCount}
+                                                />
+                                            )})}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                          </div>
