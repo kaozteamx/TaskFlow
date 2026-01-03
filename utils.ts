@@ -1,4 +1,4 @@
-import { Project } from './types';
+import { Project, Task } from './types';
 
 // --- Constants ---
 export const HOME_VIEW = { 
@@ -183,4 +183,76 @@ export const getMonday = (d: Date) => {
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
   return new Date(d.setDate(diff));
+};
+
+// --- ICS PARSER (Outlook/Google) ---
+export const parseICS = (icsContent: string): Partial<Task>[] => {
+    const events: Partial<Task>[] = [];
+    const lines = icsContent.split(/\r\n|\n|\r/);
+    let currentEvent: any = null;
+    let inEvent = false;
+
+    // Helper to parse ICS Date String (e.g., 20231208T140000Z)
+    const parseICSDate = (dateStr: string) => {
+        if (!dateStr) return null;
+        // Clean key params like ;TZID=...
+        const cleanDateStr = dateStr.split(':').pop() || '';
+        
+        const year = cleanDateStr.substring(0, 4);
+        const month = cleanDateStr.substring(4, 6);
+        const day = cleanDateStr.substring(6, 8);
+        const hour = cleanDateStr.substring(9, 11);
+        const min = cleanDateStr.substring(11, 13);
+        
+        // This is a naive parse assuming local time match or ignoring timezone complexity for MVP
+        // Ideal solution requires full TZ parsing library
+        return new Date(`${year}-${month}-${day}T${hour || '00'}:${min || '00'}:00`);
+    };
+
+    lines.forEach(line => {
+        if (line.startsWith('BEGIN:VEVENT')) {
+            inEvent = true;
+            currentEvent = {};
+        } else if (line.startsWith('END:VEVENT')) {
+            inEvent = false;
+            if (currentEvent && currentEvent.summary && currentEvent.dtstart) {
+                const start = parseICSDate(currentEvent.dtstart);
+                const end = parseICSDate(currentEvent.dtend);
+                
+                if (start) {
+                    const dateStr = start.toISOString().split('T')[0];
+                    const timeStr = `${String(start.getHours()).padStart(2,'0')}:${String(start.getMinutes()).padStart(2,'0')}`;
+                    
+                    let duration = 60;
+                    if (end) {
+                        const diffMs = end.getTime() - start.getTime();
+                        duration = Math.floor(diffMs / 60000);
+                    }
+
+                    events.push({
+                        id: `ics_${Math.random().toString(36).substr(2, 9)}`,
+                        title: currentEvent.summary,
+                        description: currentEvent.description || 'Evento externo',
+                        dueDate: dateStr,
+                        dueTime: timeStr,
+                        duration: duration,
+                        projectId: 'OUTLOOK_CALENDAR',
+                        completed: false,
+                        isExternal: true, // Marker for styling
+                        priority: 'none',
+                        recurrence: 'none',
+                        noteContent: ''
+                    });
+                }
+            }
+            currentEvent = null;
+        } else if (inEvent) {
+            if (line.startsWith('SUMMARY:')) currentEvent.summary = line.substring(8);
+            if (line.startsWith('DTSTART')) currentEvent.dtstart = line;
+            if (line.startsWith('DTEND')) currentEvent.dtend = line;
+            if (line.startsWith('DESCRIPTION:')) currentEvent.description = line.substring(12);
+        }
+    });
+
+    return events;
 };

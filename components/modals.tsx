@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Wifi, WifiOff, Globe, Share2, Loader2, Laptop, Smartphone, Check, Copy, LogOut, X, Timer, Plus, Minus, Palette } from 'lucide-react';
+import { AlertTriangle, Wifi, WifiOff, Globe, Share2, Loader2, Laptop, Smartphone, Check, Copy, LogOut, X, Timer, Plus, Minus, Palette, Calendar } from 'lucide-react';
 import { PROJECT_COLORS } from '../utils';
 
 export const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel, isDark, confirmText = "Eliminar", cancelText = "Cancelar" }: any) => {
@@ -12,6 +12,58 @@ export const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel,
       </div>
     </div>
   );
+};
+
+export const CalendarSubscribeModal = ({ isOpen, onClose, isDark, onSubscribe }: any) => {
+    const [url, setUrl] = useState('https://outlook.office365.com/owa/calendar/968453ecd04f46468bfc40efb993a1fc@sonda.com/805360d363424c45beae540565c7dd6f712301712269218943/calendar.ics');
+    const [isLoading, setIsLoading] = useState(false);
+
+    if (!isOpen) return null;
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        await onSubscribe(url);
+        setIsLoading(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in zoom-in-95">
+            <div className={`w-full max-w-md rounded-xl border shadow-2xl p-6 ${isDark ? 'bg-[#18181b] border-zinc-800' : 'bg-white border-gray-200'}`}>
+                 <div className="flex justify-between items-center mb-5">
+                    <h3 className={`text-lg font-semibold flex items-center gap-2 ${isDark ? 'text-zinc-100' : 'text-gray-900'}`}>
+                        <Calendar size={20} className="text-blue-500" /> 
+                        Suscribir a Calendario
+                    </h3>
+                    <button onClick={onClose} className={isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-gray-400 hover:text-gray-600'}><X size={20}/></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <p className={`text-xs mb-4 leading-relaxed ${isDark ? 'text-zinc-400' : 'text-gray-600'}`}>
+                        Pega una URL de calendario <strong>.ics</strong> (Outlook, Google Calendar, etc). 
+                        Los eventos se mostrarán en tu tablero pero no serán editables.
+                    </p>
+                    <div className="mb-4">
+                        <label className={`block text-[10px] uppercase font-bold mb-1.5 ${isDark ? 'text-zinc-500' : 'text-gray-500'}`}>URL del Calendario (ICS)</label>
+                        <input 
+                            type="url" 
+                            required
+                            value={url} 
+                            onChange={(e) => setUrl(e.target.value)} 
+                            placeholder="https://..."
+                            className={`w-full px-3 py-2.5 rounded-lg text-sm border outline-none transition-colors ${isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-200 focus:border-blue-500' : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'}`}
+                        />
+                    </div>
+                    <button 
+                        type="submit" 
+                        disabled={isLoading}
+                        className={`w-full py-2.5 rounded-lg text-sm font-bold text-white transition-all flex items-center justify-center gap-2 ${isLoading ? 'bg-blue-800 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'}`}
+                    >
+                        {isLoading ? <Loader2 size={16} className="animate-spin" /> : 'Sincronizar'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
 };
 
 export const CloudSyncModal = ({ isOpen, onClose, currentUserId, isCustom, onSetCustomId, onClearCustomId, isDark, onActivateCloudMode }: any) => {

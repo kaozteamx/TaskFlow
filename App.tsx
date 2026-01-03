@@ -9,12 +9,12 @@ import {
 import { auth, db, signInAnonymously, signInWithGoogle, signOut, onAuthStateChanged, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, writeBatch, getDocs, IS_DEMO, __app_id } from './firebase-setup';
 import { Project, Task, NotificationType } from './types';
 import { 
-  HOME_VIEW, safeDate, formatDate, calculateNextDueDate, calculateDuration 
+  HOME_VIEW, safeDate, formatDate, calculateNextDueDate, calculateDuration, parseICS
 } from './utils';
 
 // --- Component Imports ---
 import { NotificationToast, MiniCalendar, PerformanceChart } from './components/ui-elements';
-import { ConfirmationModal, CloudSyncModal, PomodoroLogModal, ProjectModal } from './components/modals';
+import { ConfirmationModal, CloudSyncModal, PomodoroLogModal, ProjectModal, CalendarSubscribeModal } from './components/modals';
 import { TaskNoteModal } from './components/task-note-modal';
 import { CalendarBoard } from './components/calendar-board';
 import { KanbanBoard } from './components/kanban-board';
@@ -28,6 +28,7 @@ const App = () => {
   const [customUid, setCustomUid] = useState<string | null>(() => localStorage.getItem('taskflow_custom_uid'));
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [externalEvents, setExternalEvents] = useState<Task[]>([]); // Store for ICS events
   const [activeProject, setActiveProject] = useState<Project>(HOME_VIEW);
   const [isDark, setIsDark] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'board'>('list');
@@ -61,6 +62,7 @@ const App = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
   const [isCloudSyncModalOpen, setIsCloudSyncModalOpen] = useState(false);
+  const [isCalendarSubscribeModalOpen, setIsCalendarSubscribeModalOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false });
   const [pomodoroLogModalOpen, setPomodoroLogModalOpen] = useState(false);
   const [completedFocusMinutes, setCompletedFocusMinutes] = useState(0);
@@ -195,6 +197,7 @@ const App = () => {
 
   const handleUpdateTaskDetail = async (field: keyof Task, value: any) => { 
       if (!editingTask) return; 
+      if (editingTask.isExternal) return; // Prevent editing external tasks
       setEditingTask(p => p ? ({ ...p, [field]: value }) : null); 
       const ref = userId ? getCollectionRef('tasks') : collection(db, 'tasks');
       await updateDoc(doc(ref, editingTask.id), { [field]: value }); 
@@ -218,6 +221,7 @@ const App = () => {
   };
 
   const handleToggleTask = async (task: Task) => {
+      if (task.isExternal) return; // Prevent toggling external tasks
       const ref = userId ? getCollectionRef('tasks') : collection(db, 'tasks');
       const isCompleting = !task.completed;
 
@@ -363,6 +367,28 @@ const App = () => {
           recurrence: 'none'
       }); 
       e.target.reset(); 
+  };
+  
+  // --- ICS Calendar Handler ---
+  const handleSubscribeCalendar = async (url: string) => {
+      try {
+          // Use AllOrigins Proxy to bypass CORS for this demo/prototype
+          // In production, this should be done via a backend function
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+          const response = await fetch(proxyUrl);
+          
+          if (!response.ok) throw new Error("No se pudo conectar al calendario");
+          
+          const text = await response.text();
+          const events = parseICS(text);
+          
+          setExternalEvents(events as Task[]);
+          setIsCalendarSubscribeModalOpen(false);
+          setNotification({ type: 'success', message: `Calendario sincronizado: ${events.length} eventos.` });
+          setViewMode('calendar'); // Switch to calendar view to see results
+      } catch (e: any) {
+          setNotification({ type: 'error', message: 'Error al importar: ' + e.message });
+      }
   };
 
   // --- Project Handlers ---
@@ -619,10 +645,21 @@ const App = () => {
       }
   };
 
+  // COMBINE LOCAL AND EXTERNAL TASKS
+  const allTasks = useMemo(() => {
+      if (externalEvents.length === 0) return tasks;
+      return [...tasks, ...externalEvents];
+  }, [tasks, externalEvents]);
+
   const activeRootTasks = useMemo(() => {
-    let filtered = tasks.filter(t => !t.parentTaskId);
+    // Only use 'tasks' (internal) for List View initially, unless we want to show external events there too
+    // For now, let's keep external events primarily for Calendar view, but here we can merge if project is ALL
+    let sourceTasks = viewMode === 'list' && activeProject.id !== HOME_VIEW.id ? tasks : allTasks;
+    
+    let filtered = sourceTasks.filter(t => !t.parentTaskId);
     
     if (activeProject.id !== HOME_VIEW.id) {
+        // For external events, we might not assign them a real project ID, so they only show in Home/Calendar
         filtered = filtered.filter(t => t.projectId === activeProject.id);
     }
     
@@ -659,7 +696,7 @@ const App = () => {
         }
         return 0;
     });
-  }, [tasks, activeProject, sortBy, selectedDateFilter, searchQuery]);
+  }, [tasks, externalEvents, activeProject, sortBy, selectedDateFilter, searchQuery, viewMode, allTasks]);
 
   const currentTaskSubtasks = useMemo(() => { 
       if (!editingTask) return []; 
@@ -783,6 +820,7 @@ const App = () => {
             handleFileSelect={handleFileSelect}
             onFocusComplete={handleFocusComplete}
             onMoveTaskToProject={handleMoveTaskToProject}
+            onOpenCalendarSubscribe={() => setIsCalendarSubscribeModalOpen(true)}
        />
 
        {/* MAIN CONTENT AREA */}
@@ -975,7 +1013,7 @@ const App = () => {
                                     onClick={setEditingTask} 
                                     onDelete={handleDeleteTask} 
                                     isDark={isDark} 
-                                    showProjectName={activeProject.id === HOME_VIEW.id ? (projects.find(p=>p.id===t.projectId)?.name || null) : null}
+                                    showProjectName={activeProject.id === HOME_VIEW.id && !t.isExternal ? (projects.find(p=>p.id===t.projectId)?.name || null) : t.isExternal ? 'Externo' : null}
                                     onOpenChecklist={setChecklistModalTask}
                                     onToggleReview={handleToggleReview}
                                     subtasksCount={subtasks.length}
@@ -1006,7 +1044,7 @@ const App = () => {
                                                     onClick={setEditingTask} 
                                                     onDelete={handleDeleteTask} 
                                                     isDark={isDark} 
-                                                    showProjectName={activeProject.id === HOME_VIEW.id ? (projects.find(p=>p.id===t.projectId)?.name || null) : null}
+                                                    showProjectName={activeProject.id === HOME_VIEW.id && !t.isExternal ? (projects.find(p=>p.id===t.projectId)?.name || null) : t.isExternal ? 'Externo' : null}
                                                     onOpenChecklist={setChecklistModalTask}
                                                     onToggleReview={handleToggleReview}
                                                     subtasksCount={subtasks.length}
@@ -1031,7 +1069,7 @@ const App = () => {
                 />
             ) : (
                 <CalendarBoard 
-                    tasks={tasks} // Pass ALL tasks to calendar, it handles filtering/view
+                    tasks={allTasks} // Pass ALL tasks (including external) to calendar
                     projects={projects.filter(p => p.id !== HOME_VIEW.id)}
                     onUpdateTask={handleUpdateTask}
                     onUpdateTaskTime={handleUpdateTaskTime}
@@ -1061,6 +1099,7 @@ const App = () => {
        <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} confirmText={confirmModal.confirmText} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal({isOpen:false})} isDark={isDark} />
        <TaskNoteModal isOpen={!!checklistModalTask} onClose={() => setChecklistModalTask(null)} task={checklistModalTask} onUpdateNote={handleUpdateNote} isDark={isDark} />
        <ProjectModal isOpen={isProjectModalOpen} onClose={() => setIsProjectModalOpen(false)} isDark={isDark} editingProject={editingProject} name={projectName} setName={setProjectName} links={projectLinks} setLinks={setProjectLinks} color={projectColor} setColor={setProjectColor} onSave={handleSaveProject} />
+       <CalendarSubscribeModal isOpen={isCalendarSubscribeModalOpen} onClose={() => setIsCalendarSubscribeModalOpen(false)} isDark={isDark} onSubscribe={handleSubscribeCalendar} />
     </div>
   );
 };

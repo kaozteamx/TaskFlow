@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Layout, Plus, FolderOpen, Edit2, Trash2, CloudCog, Download, Upload, 
   Loader2, SidebarClose, SidebarOpen, Sun, Moon, FileSpreadsheet, Home,
-  ChevronDown, ChevronRight, Waves
+  ChevronDown, ChevronRight, Waves, Calendar
 } from 'lucide-react';
 import { Project } from '../types';
 import { HOME_VIEW, PROJECT_COLORS } from '../utils';
@@ -30,6 +30,7 @@ interface SidebarProps {
     handleFileSelect: (e: any) => void;
     onFocusComplete: (minutes: number) => void;
     onMoveTaskToProject: (taskId: string, projectId: string) => void;
+    onOpenCalendarSubscribe: () => void;
 }
 
 export const Sidebar = ({
@@ -37,7 +38,7 @@ export const Sidebar = ({
     activeProject, setActiveProject, projects, isProjectsExpanded, setIsProjectsExpanded,
     openProjectModal, handleDeleteProject, setIsCloudSyncModalOpen,
     isImporting, isExportingCSV, handleExportPomodoroCSV, isBackingUp, handleExportData,
-    fileInputRef, handleFileSelect, onFocusComplete, onMoveTaskToProject
+    fileInputRef, handleFileSelect, onFocusComplete, onMoveTaskToProject, onOpenCalendarSubscribe
 }: SidebarProps) => {
     const [dragOverProjectId, setDragOverProjectId] = useState<string | null>(null);
     const [isNoisePlaying, setIsNoisePlaying] = useState(false);
@@ -247,6 +248,7 @@ export const Sidebar = ({
                     <button onClick={() => setIsCloudSyncModalOpen(true)} className={`flex items-center justify-center p-2 rounded-lg transition-all ${isDark ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`} title="Sincronización Nube"><CloudCog size={18} /></button>
                     {isImporting ? (<div className="flex justify-center p-2"><Loader2 size={18} className="animate-spin text-emerald-500" /></div>) : (
                         <>
+                            <button onClick={onOpenCalendarSubscribe} className={`flex items-center justify-center p-2 rounded-lg transition-colors ${isDark ? 'bg-zinc-900 text-blue-400 hover:text-blue-200 hover:bg-zinc-800' : 'bg-white text-blue-500 hover:text-blue-700 hover:bg-gray-100 border border-gray-200'}`} title="Suscribir a Calendario Outlook/Google"><Calendar size={18} /></button>
                             <button onClick={toggleNoise} className={`flex items-center justify-center p-2 rounded-lg transition-all ${isNoisePlaying ? 'bg-rose-500/20 text-rose-500 animate-pulse' : isDark ? 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200'}`} title={isNoisePlaying ? "Detener Ruido Rosa (432Hz)" : "Reproducir Ruido Rosa (432Hz Focus)"}><Waves size={18} /></button>
                             <button onClick={handleExportPomodoroCSV} disabled={isExportingCSV} className={`flex items-center justify-center p-2 rounded-lg transition-colors ${isDark ? 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200'}`} title="Reporte CSV Pomodoros">{isExportingCSV ? <Loader2 size={18} className="animate-spin" /> : <FileSpreadsheet size={18} />}</button>
                             <button onClick={handleExportData} disabled={isBackingUp} className={`flex items-center justify-center p-2 rounded-lg transition-colors ${isDark ? 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200'}`} title="Descargar Backup">{isBackingUp ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}</button>

@@ -25,6 +25,7 @@ export interface Task {
     lastReviewedAt?: string; // ISO String of last review time
     createdAt?: any;
     completedAt?: any;
+    isExternal?: boolean; // New: For ICS events
 }
 
 export interface PomodoroLog {
