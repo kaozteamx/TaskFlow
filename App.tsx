@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { 
   Plus, Loader2, Calendar as CalendarIcon, 
   List, BarChart3, Search, FilterX, StickyNote, Flag, ExternalLink, Clock, LogOut, Layout,
-  AlertTriangle, Copy, Check, WifiOff, Link, ChevronUp, ChevronDown, ChevronRight
+  AlertTriangle, Copy, Check, WifiOff, Link, ChevronUp, ChevronDown, ChevronRight, Kanban
 } from 'lucide-react';
 
 // --- Imports from Refactored Modules ---
@@ -17,6 +17,7 @@ import { NotificationToast, MiniCalendar, PerformanceChart } from './components/
 import { ConfirmationModal, CloudSyncModal, PomodoroLogModal, ProjectModal } from './components/modals';
 import { TaskNoteModal } from './components/task-note-modal';
 import { CalendarBoard } from './components/calendar-board';
+import { KanbanBoard } from './components/kanban-board';
 import { TaskItem } from './components/task-item';
 import { Sidebar } from './components/sidebar';
 import { DetailsPanel } from './components/details-panel';
@@ -29,7 +30,7 @@ const App = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeProject, setActiveProject] = useState<Project>(HOME_VIEW);
   const [isDark, setIsDark] = useState(true);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'board'>('list');
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true); 
   const [isLoggingIn, setIsLoggingIn] = useState(false); // Estado para el botón de login
@@ -222,6 +223,7 @@ const App = () => {
 
       await updateDoc(doc(ref, task.id), { 
           completed: isCompleting,
+          status: isCompleting ? 'done' : 'todo', // Reset status if unchecking, set done if checking
           completedAt: isCompleting ? serverTimestamp() : null
       });
 
@@ -238,6 +240,7 @@ const App = () => {
                   dueTime: task.dueTime || '',
                   duration: task.duration || 60,
                   completed: false, 
+                  status: 'todo',
                   parentTaskId: task.parentTaskId || null,
                   priority: task.priority || 'medium',
                   recurrence: recurrenceType,
@@ -247,6 +250,46 @@ const App = () => {
               setNotification({ type: 'success', message: '¡Completada! Siguiente repetición creada.' });
           }
       }
+  };
+
+  // Kanban Status Update
+  const handleUpdateTaskStatus = async (taskId: string, newStatus: 'todo' | 'in_progress' | 'done') => {
+      const ref = userId ? getCollectionRef('tasks') : collection(db, 'tasks');
+      const updates: any = { status: newStatus };
+      
+      if (newStatus === 'done') {
+          updates.completed = true;
+          updates.completedAt = serverTimestamp();
+      } else {
+          updates.completed = false;
+          updates.completedAt = null;
+      }
+      
+      await updateDoc(doc(ref, taskId), updates);
+  };
+
+  const handleKanbanQuickAdd = async (status: 'todo' | 'in_progress') => {
+      const title = prompt("Nueva tarea:");
+      if (!title) return;
+      
+      let targetProjectId = activeProject.id;
+      if (targetProjectId === HOME_VIEW.id) { 
+          if (projects.length > 1) targetProjectId = projects[1].id; 
+          else { setNotification({type:'error', message:'Crea un proyecto primero'}); return; }
+      }
+
+      const ref = userId ? getCollectionRef('tasks') : collection(db, 'tasks');
+      await addDoc(ref, { 
+          projectId: targetProjectId, 
+          title: title, 
+          completed: false, 
+          status: status,
+          createdAt: serverTimestamp(),
+          priority: 'medium',
+          dueDate: '',
+          noteContent: '',
+          recurrence: 'none'
+      });
   };
 
   const handleDeleteTask = async (id: string) => {
@@ -294,6 +337,7 @@ const App = () => {
           projectId: targetProjectId, 
           title: quickTaskTitle, 
           completed: false, 
+          status: 'todo',
           createdAt: serverTimestamp(),
           priority: 'medium',
           dueDate: selectedDateFilter || '',
@@ -314,6 +358,7 @@ const App = () => {
           parentTaskId: editingTask.id, 
           title: title, 
           completed: false, 
+          status: 'todo',
           createdAt: serverTimestamp(),
           recurrence: 'none'
       }); 
@@ -517,6 +562,7 @@ const App = () => {
                   projectId: t.projectId, 
                   title: t.title, 
                   completed: !!t.completed, 
+                  status: t.status || (t.completed ? 'done' : 'todo'),
                   createdAt: created, 
                   dueDate: t.dueDate || '', 
                   dueTime: t.dueTime || '', 
@@ -758,6 +804,13 @@ const App = () => {
                         </button>
                         <div className={`w-px h-3 mx-1 ${isDark ? 'bg-zinc-800' : 'bg-gray-200'}`} />
                         <button
+                            onClick={() => setViewMode('board')}
+                            className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-xs font-medium transition-all ${viewMode === 'board' ? (isDark ? 'bg-zinc-800 text-zinc-200 shadow-sm' : 'bg-gray-100 text-gray-800 shadow-sm') : (isDark ? 'text-zinc-600 hover:text-zinc-400' : 'text-gray-400 hover:text-gray-600')}`}
+                        >
+                            <Kanban size={14} /> Tablero
+                        </button>
+                        <div className={`w-px h-3 mx-1 ${isDark ? 'bg-zinc-800' : 'bg-gray-200'}`} />
+                        <button
                             onClick={() => setViewMode('calendar')}
                             className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-xs font-medium transition-all ${viewMode === 'calendar' ? (isDark ? 'bg-zinc-800 text-zinc-200 shadow-sm' : 'bg-gray-100 text-gray-800 shadow-sm') : (isDark ? 'text-zinc-600 hover:text-zinc-400' : 'text-gray-400 hover:text-gray-600')}`}
                         >
@@ -967,6 +1020,15 @@ const App = () => {
                          </div>
                     </div>
                 </div>
+            ) : viewMode === 'board' ? (
+                <KanbanBoard 
+                    tasks={activeRootTasks} // Uses same filtering as List view
+                    projects={projects}
+                    isDark={isDark}
+                    onUpdateStatus={handleUpdateTaskStatus}
+                    onEditTask={setEditingTask}
+                    onQuickAdd={handleKanbanQuickAdd}
+                />
             ) : (
                 <CalendarBoard 
                     tasks={tasks} // Pass ALL tasks to calendar, it handles filtering/view
