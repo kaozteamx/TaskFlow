@@ -26,6 +26,7 @@ export interface Task {
     createdAt?: any;
     completedAt?: any;
     isExternal?: boolean; // New: For ICS events
+    attachment?: string; // New: Base64 image string
 }
 
 export interface PomodoroLog {

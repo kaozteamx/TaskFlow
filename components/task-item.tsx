@@ -1,5 +1,5 @@
 import React from 'react';
-import { GripVertical, CheckCircle2, Circle, Flag, Repeat, ClipboardList, Edit2, Trash2, AlignLeft } from 'lucide-react';
+import { GripVertical, CheckCircle2, Circle, Flag, Repeat, ClipboardList, Edit2, Trash2, AlignLeft, Image as ImageIcon } from 'lucide-react';
 import { Task } from '../types';
 import { PRIORITIES } from '../utils';
 import { isOverdue, isDueToday, getDaysOpen, formatDate, safeDate } from '../utils';
@@ -83,6 +83,11 @@ export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjec
                 {task.recurrence && task.recurrence !== 'none' && (
                     <div className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${isDark ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-600 border-blue-100'}`} title="Tarea recurrente">
                         <Repeat size={10} />
+                    </div>
+                )}
+                {task.attachment && (
+                    <div className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${isDark ? 'bg-zinc-800 text-zinc-400 border-zinc-700' : 'bg-gray-100 text-gray-500 border-gray-200'}`} title="Imagen adjunta">
+                        <ImageIcon size={10} />
                     </div>
                 )}
                 {totalSubitems > 0 && (

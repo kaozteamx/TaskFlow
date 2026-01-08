@@ -1013,7 +1013,7 @@ const App = () => {
                                     onClick={setEditingTask} 
                                     onDelete={handleDeleteTask} 
                                     isDark={isDark} 
-                                    showProjectName={activeProject.id === HOME_VIEW.id && !t.isExternal ? (projects.find(p=>p.id===t.projectId)?.name || null) : t.isExternal ? 'Externo' : null}
+                                    showProjectName={activeProject.id === HOME_VIEW.id && !t.isExternal ? (projects.find(p=>p.id===t.projectId)?.name || '') : t.isExternal ? 'Externo' : ''}
                                     onOpenChecklist={setChecklistModalTask}
                                     onToggleReview={handleToggleReview}
                                     subtasksCount={subtasks.length}
@@ -1044,7 +1044,7 @@ const App = () => {
                                                     onClick={setEditingTask} 
                                                     onDelete={handleDeleteTask} 
                                                     isDark={isDark} 
-                                                    showProjectName={activeProject.id === HOME_VIEW.id && !t.isExternal ? (projects.find(p=>p.id===t.projectId)?.name || null) : t.isExternal ? 'Externo' : null}
+                                                    showProjectName={activeProject.id === HOME_VIEW.id && !t.isExternal ? (projects.find(p=>p.id===t.projectId)?.name || '') : t.isExternal ? 'Externo' : ''}
                                                     onOpenChecklist={setChecklistModalTask}
                                                     onToggleReview={handleToggleReview}
                                                     subtasksCount={subtasks.length}

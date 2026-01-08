@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, CheckCircle2, Circle, Flag, Calendar as CalendarIcon, Repeat, ClipboardList, Plus, Trash2, ArrowDownToLine } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, CheckCircle2, Circle, Flag, Calendar as CalendarIcon, Repeat, ClipboardList, Plus, Trash2, ArrowDownToLine, Image as ImageIcon, Upload } from 'lucide-react';
 import { Task } from '../types';
 import { PRIORITIES, TIME_SLOTS, RECURRENCE_OPTIONS, formatCreationDate, getEndTime, calculateDuration } from '../utils';
 import { CustomTimeSelect, CustomSelect } from './ui-elements';
@@ -23,6 +23,7 @@ export const DetailsPanel = ({
     handleDeleteTask, currentTaskSubtasks, handleAddSubtask, setChecklistModalTask, panelRef, onReparentTask
 }: DetailsPanelProps) => {
     const [isDragOver, setIsDragOver] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
@@ -40,6 +41,35 @@ export const DetailsPanel = ({
         
         if (childTaskId && editingTask && childTaskId !== editingTask.id && onReparentTask) {
             onReparentTask(childTaskId, editingTask.id);
+        }
+    };
+
+    // --- Image Handling ---
+    const processImageFile = (file: File) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (e.target?.result) {
+                handleUpdateTaskDetail('attachment', e.target.result);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handlePaste = (e: React.ClipboardEvent) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const blob = items[i].getAsFile();
+                if (blob) processImageFile(blob);
+                e.preventDefault(); // Prevent pasting the binary name text into textarea
+                break;
+            }
+        }
+    };
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            processImageFile(e.target.files[0]);
         }
     };
 
@@ -139,7 +169,39 @@ export const DetailsPanel = ({
                                 <ClipboardList size={12} /> Abrir Notas Completas
                             </button>
                         </div>
-                        <textarea value={editingTask.description} onChange={(e) => handleUpdateTaskDetail('description', e.target.value)} className={`w-full rounded-lg p-3 outline-none border transition-colors min-h-[100px] text-sm resize-none ${isDark ? 'bg-zinc-900/50 border-zinc-800/50 text-zinc-300 placeholder-zinc-600 focus:border-emerald-500/50' : 'bg-gray-50 border-gray-100 text-gray-700 placeholder-gray-400 focus:border-emerald-400'}`} placeholder="Añadir descripción..." />
+                        <div 
+                            className={`w-full rounded-lg p-3 border transition-colors min-h-[100px] flex flex-col ${isDark ? 'bg-zinc-900/50 border-zinc-800/50 focus-within:border-emerald-500/50' : 'bg-gray-50 border-gray-100 focus-within:border-emerald-400'}`}
+                        >
+                            <textarea 
+                                value={editingTask.description} 
+                                onChange={(e) => handleUpdateTaskDetail('description', e.target.value)} 
+                                onPaste={handlePaste}
+                                className={`w-full bg-transparent outline-none text-sm resize-none flex-1 ${isDark ? 'text-zinc-300 placeholder-zinc-600' : 'text-gray-700 placeholder-gray-400'}`} 
+                                placeholder="Añadir descripción o pega (Ctrl+V) una imagen..." 
+                            />
+                            
+                            {/* ATTACHMENT PREVIEW AREA */}
+                            {editingTask.attachment && (
+                                <div className="mt-3 relative group">
+                                    <img src={editingTask.attachment} alt="Adjunto" className="w-full h-auto rounded-lg border dark:border-zinc-700" />
+                                    <button 
+                                        onClick={() => handleUpdateTaskDetail('attachment', null)}
+                                        className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                                        title="Eliminar imagen"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            )}
+                            
+                            {/* UPLOAD BUTTON */}
+                            <div className="mt-2 flex justify-end">
+                                <label className={`cursor-pointer p-1.5 rounded transition-colors ${isDark ? 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`} title="Adjuntar imagen">
+                                    <ImageIcon size={16} />
+                                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} ref={fileInputRef} />
+                                </label>
+                            </div>
+                        </div>
                     </div>
                     
                     <div>
