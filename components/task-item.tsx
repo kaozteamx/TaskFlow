@@ -4,9 +4,20 @@ import { Task } from '../types';
 import { PRIORITIES } from '../utils';
 import { isOverdue, isDueToday, getDaysOpen, formatDate, safeDate } from '../utils';
 
-export const TaskItem = ({ task, onToggle, onClick, onDelete, isDark, showProjectName, onOpenChecklist, onToggleReview, subtasksCount, subtasksCompletedCount }: {
-    task: Task, onToggle: any, onClick: any, onDelete: any, isDark: boolean, showProjectName: string | null, onOpenChecklist: any, onToggleReview: any, subtasksCount?: number, subtasksCompletedCount?: number
-}) => {
+interface TaskItemProps {
+    task: Task;
+    onToggle: (task: Task) => void;
+    onClick: (task: Task) => void;
+    onDelete: (id: string) => void;
+    isDark: boolean;
+    showProjectName: string;
+    onOpenChecklist: (task: Task) => void;
+    onToggleReview: (task: Task) => void;
+    subtasksCount?: number;
+    subtasksCompletedCount?: number;
+}
+
+export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onClick, onDelete, isDark, showProjectName, onOpenChecklist, onToggleReview, subtasksCount, subtasksCompletedCount }) => {
   const overdue = !task.completed && isOverdue(task.dueDate);
   const dueToday = !task.completed && isDueToday(task.dueDate);
   const priorityStyle = PRIORITIES[task.priority] || PRIORITIES['none'];

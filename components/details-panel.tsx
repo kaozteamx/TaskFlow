@@ -170,7 +170,7 @@ export const DetailsPanel = ({
                             </button>
                         </div>
                         <div 
-                            className={`w-full rounded-lg p-3 border transition-colors min-h-[100px] flex flex-col ${isDark ? 'bg-zinc-900/50 border-zinc-800/50 focus-within:border-emerald-500/50' : 'bg-gray-50 border-gray-100 focus-within:border-emerald-400'}`}
+                            className={`w-full rounded-lg p-3 border transition-colors min-h-[250px] flex flex-col ${isDark ? 'bg-zinc-900/50 border-zinc-800/50 focus-within:border-emerald-500/50' : 'bg-gray-50 border-gray-100 focus-within:border-emerald-400'}`}
                         >
                             <textarea 
                                 value={editingTask.description} 
