@@ -3,6 +3,15 @@ import { ChevronUp, ChevronDown, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, Lis
 import { Task, Project } from '../types';
 import { PRIORITIES, getMonday, isDueToday, getEndTime, PROJECT_COLORS, parseLocalDate } from '../utils';
 
+// Helper: Format date as YYYY-MM-DD using LOCAL timezone (not UTC)
+// This prevents the off-by-one day bug in UTC- timezones (e.g. UTC-3)
+const toLocalDateStr = (date: Date): string => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
+
 // Helper to calculate minutes for layout logic
 const getMinutes = (time: string) => {
     if (!time) return 0;
@@ -296,7 +305,7 @@ export const CalendarBoard = ({
             if (!taskDate) return;
 
             weekDays.forEach(day => {
-                const dayStr = day.toISOString().split('T')[0];
+                const dayStr = toLocalDateStr(day);
                 
                 // If this is the ACTUAL due date, the real task is already in visibleTasks, so skip
                 if (dayStr === task.dueDate) return;
@@ -397,7 +406,7 @@ export const CalendarBoard = ({
         e.preventDefault();
         const taskId = e.dataTransfer.getData("taskId");
         if(taskId) {
-             const dateStr = date.toISOString().split('T')[0];
+             const dateStr = toLocalDateStr(date);
              onUpdateTaskTime(taskId, dateStr, '', 0); 
              setDraggingTaskId(null);
         }
@@ -429,7 +438,7 @@ export const CalendarBoard = ({
             const minutes = snappedMinutes % 60;
             const clampedHours = Math.max(0, Math.min(23, hours));
             const timeStr = `${clampedHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = toLocalDateStr(date);
 
             const task = tasks.find(t => t.id === taskId);
             const duration = task?.duration || 60;
@@ -603,7 +612,7 @@ export const CalendarBoard = ({
                             {/* Day Columns */}
                             <div className="flex-1 grid grid-cols-5 divide-x">
                                 {weekDays.map((day, i) => {
-                                    const dateStr = day.toISOString().split('T')[0];
+                                    const dateStr = toLocalDateStr(day);
                                     const isToday = isDueToday(dateStr);
                                     // Use allWeekTasks to include virtual tasks in All-Day view (if they have no time)
                                     // But typically recurring tasks have times. If not, they end up here.
@@ -667,7 +676,7 @@ export const CalendarBoard = ({
                         {/* Grid Columns */}
                         <div className="flex-1 grid grid-cols-5 divide-x min-w-0">
                              {weekDays.map((day, i) => {
-                                 const dateStr = day.toISOString().split('T')[0];
+                                 const dateStr = toLocalDateStr(day);
                                  // Use allWeekTasks to include virtual tasks
                                  const dayTasks = allWeekTasks.filter(t => t.dueDate === dateStr && !t.completed);
                                  const timedTasks = dayTasks.filter(t => t.dueTime);
