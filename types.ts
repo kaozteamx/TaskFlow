@@ -19,7 +19,7 @@ export interface Task {
     dueTime?: string; // HH:mm
     duration?: number; // in minutes
     completed: boolean;
-    status?: 'todo' | 'in_progress' | 'done'; // Added for Kanban
+    status?: 'todo' | 'in_progress' | 'done' | 'do_first' | 'schedule' | 'delegate' | 'eliminate';
     parentTaskId: string | null;
     priority: 'high' | 'medium' | 'low' | 'none';
     recurrence: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';

@@ -114,7 +114,7 @@ export const useTasks = (
         }
     };
 
-    const handleUpdateTaskStatus = async (taskId: string, newStatus: 'todo' | 'in_progress' | 'done') => {
+    const handleUpdateTaskStatus = async (taskId: string, newStatus: 'todo' | 'in_progress' | 'done' | 'do_first' | 'schedule' | 'delegate' | 'eliminate') => {
         const ref = userId ? getCollectionRef('tasks') : collection(db, 'tasks');
         const updates: any = { status: newStatus };
         if (newStatus === 'done') {
@@ -127,7 +127,7 @@ export const useTasks = (
         await updateDoc(doc(ref, taskId), updates);
     };
 
-    const handleKanbanQuickAdd = async (status: 'todo' | 'in_progress', title: string) => {
+    const handleKanbanQuickAdd = async (status: 'do_first' | 'schedule' | 'delegate' | 'eliminate', title: string) => {
         if (!title || !title.trim()) return;
 
         let targetProjectId = activeProject.id;
