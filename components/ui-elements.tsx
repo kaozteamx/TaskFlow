@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ChevronDown, Check, AlertTriangle, Info, X, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
+import { ChevronDown, Check, AlertTriangle, Info, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { NotificationType, Task } from '../types';
 import { parseLocalDate } from '../utils';
 
@@ -183,12 +183,8 @@ export const DailyQuoteWidget = ({ isDark, activeProjectId }: any) => {
 
     return (
         <div className={`p-5 rounded-2xl border mt-4 mb-6 transition-colors duration-300 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200 shadow-sm'}`}>
-            <div className="flex flex-col gap-3 relative">
-                <Quote
-                    size={24}
-                    className={`absolute -top-1 -left-1 opacity-20 ${isDark ? 'text-zinc-500' : 'text-gray-300'}`}
-                />
-                <p className={`text-sm italic font-medium leading-relaxed my-2 pl-4 border-l-2 ${isDark ? 'text-zinc-300 border-emerald-500/50' : 'text-gray-700 border-emerald-400'}`}>
+            <div className="flex flex-col gap-3">
+                <p className={`text-sm italic font-medium leading-relaxed my-1 pl-4 border-l-2 ${isDark ? 'text-zinc-300 border-emerald-500/50' : 'text-gray-700 border-emerald-400'}`}>
                     "{quoteObj.quote}"
                 </p>
                 <div className="flex items-center gap-2 justify-end mt-1">
