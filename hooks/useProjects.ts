@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { getDocs, query, where } from "firebase/firestore";
 import { db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, writeBatch } from '../firebase-setup';
 import { Project, Task, NotificationType } from '../types';
-import { HOME_VIEW, IS_DEMO } from '../utils';
+import { HOME_VIEW } from '../utils';
+import { IS_DEMO } from '../firebase-setup';
 
 export const useProjects = (
     userId: string | null | undefined,

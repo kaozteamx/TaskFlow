@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp } from '../firebase-setup';
 import { Task, Project, NotificationType } from '../types';
-import { HOME_VIEW, IS_DEMO, calculateNextDueDate } from '../utils';
+import { HOME_VIEW, calculateNextDueDate } from '../utils';
+import { IS_DEMO } from '../firebase-setup';
 
 export const useTasks = (
     userId: string | null | undefined,

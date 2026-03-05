@@ -9,11 +9,22 @@ interface KanbanBoardProps {
     isDark: boolean;
     onUpdateStatus: (taskId: string, newStatus: 'todo' | 'in_progress' | 'done') => void;
     onEditTask: (task: Task) => void;
-    onQuickAdd: (status: 'todo' | 'in_progress') => void;
+    onQuickAdd: (status: 'todo' | 'in_progress', title: string) => void;
 }
 
 export const KanbanBoard = ({ tasks, projects, isDark, onUpdateStatus, onEditTask, onQuickAdd }: KanbanBoardProps) => {
     const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+    const [addingToColumn, setAddingToColumn] = useState<'todo' | 'in_progress' | null>(null);
+    const [newTaskTitle, setNewTaskTitle] = useState('');
+
+    const handleQuickSubmit = (e: React.FormEvent, status: 'todo' | 'in_progress') => {
+        e.preventDefault();
+        if (newTaskTitle.trim()) {
+            onQuickAdd(status, newTaskTitle);
+            setNewTaskTitle('');
+            setAddingToColumn(null);
+        }
+    };
 
     // Filter tasks for the current view (already filtered by project in App.tsx)
     const columns = useMemo(() => {
@@ -53,7 +64,7 @@ export const KanbanBoard = ({ tasks, projects, isDark, onUpdateStatus, onEditTas
                 {(Object.keys(columns) as Array<keyof typeof columns>).map((colKey) => {
                     const column = columns[colKey];
                     return (
-                        <div 
+                        <div
                             key={column.id}
                             className={`flex-1 flex flex-col rounded-xl border transition-colors ${isDark ? 'bg-[#121214] border-zinc-800' : 'bg-gray-50/50 border-gray-200'}`}
                             onDragOver={handleDragOver}
@@ -70,8 +81,11 @@ export const KanbanBoard = ({ tasks, projects, isDark, onUpdateStatus, onEditTas
                                 </div>
                                 <div className="flex items-center gap-1">
                                     {colKey !== 'done' && (
-                                        <button 
-                                            onClick={() => onQuickAdd(colKey as any)}
+                                        <button
+                                            onClick={() => {
+                                                setAddingToColumn(colKey as any);
+                                                setNewTaskTitle('');
+                                            }}
                                             className={`p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}
                                         >
                                             <Plus size={16} />
@@ -82,11 +96,24 @@ export const KanbanBoard = ({ tasks, projects, isDark, onUpdateStatus, onEditTas
 
                             {/* Drop Zone / Task List */}
                             <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
+                                {addingToColumn === colKey && (
+                                    <form onSubmit={(e) => handleQuickSubmit(e, colKey as any)} className={`p-3 rounded-lg border shadow-sm ${isDark ? 'bg-[#18181b] border-emerald-500/50' : 'bg-white border-emerald-400'}`}>
+                                        <input
+                                            autoFocus
+                                            type="text"
+                                            value={newTaskTitle}
+                                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                                            onBlur={() => setAddingToColumn(null)}
+                                            placeholder="Título de la tarea..."
+                                            className={`w-full bg-transparent outline-none text-xs font-medium ${isDark ? 'text-zinc-200 placeholder-zinc-600' : 'text-gray-700 placeholder-gray-400'}`}
+                                        />
+                                    </form>
+                                )}
                                 {column.tasks.map(task => (
-                                    <KanbanCard 
-                                        key={task.id} 
-                                        task={task} 
-                                        isDark={isDark} 
+                                    <KanbanCard
+                                        key={task.id}
+                                        task={task}
+                                        isDark={isDark}
                                         projects={projects}
                                         onDragStart={handleDragStart}
                                         onClick={() => onEditTask(task)}
@@ -117,13 +144,11 @@ const KanbanCard = ({ task, isDark, projects, onDragStart, onClick }: any) => {
             draggable
             onDragStart={(e) => onDragStart(e, task.id)}
             onClick={onClick}
-            className={`p-3 rounded-lg border shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all group ${
-                task.completed ? 'opacity-60' : ''
-            } ${
-                isDark 
-                    ? 'bg-[#18181b] border-zinc-800 hover:border-zinc-700' 
+            className={`p-3 rounded-lg border shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all group ${task.completed ? 'opacity-60' : ''
+                } ${isDark
+                    ? 'bg-[#18181b] border-zinc-800 hover:border-zinc-700'
                     : 'bg-white border-gray-200 hover:border-emerald-300'
-            }`}
+                }`}
         >
             <div className="flex justify-between items-start mb-2">
                 <span className={`text-xs font-medium line-clamp-2 leading-relaxed ${isDark ? 'text-zinc-200' : 'text-gray-700'} ${task.completed ? 'line-through' : ''}`}>
@@ -136,7 +161,7 @@ const KanbanCard = ({ task, isDark, projects, onDragStart, onClick }: any) => {
 
             <div className="flex items-center justify-between mt-3">
                 <div className="flex items-center gap-2">
-                     {/* Project Tag */}
+                    {/* Project Tag */}
                     {project && (
                         <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-500' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
                             <div className={`w-1 h-1 rounded-full ${projectColor.dot}`} />
@@ -144,12 +169,11 @@ const KanbanCard = ({ task, isDark, projects, onDragStart, onClick }: any) => {
                         </div>
                     )}
                 </div>
-                
+
                 {/* Date Tag */}
                 {task.dueDate && (
-                    <div className={`flex items-center gap-1 text-[10px] font-bold ${
-                        overdue ? 'text-red-500' : isDark ? 'text-zinc-500' : 'text-gray-400'
-                    }`}>
+                    <div className={`flex items-center gap-1 text-[10px] font-bold ${overdue ? 'text-red-500' : isDark ? 'text-zinc-500' : 'text-gray-400'
+                        }`}>
                         <Calendar size={10} />
                         {formatDate(task.dueDate)}
                     </div>

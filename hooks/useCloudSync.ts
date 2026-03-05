@@ -10,7 +10,8 @@ export const useCloudSync = (
     setNotification: (n: NotificationType) => void,
     setConfirmModal: (modal: any) => void,
     projects: Project[],
-    handleSetCustomId: (id: string) => void
+    handleSetCustomId: (id: string) => void,
+    handleClearCustomId: () => void
 ) => {
     const [isCloudSyncModalOpen, setIsCloudSyncModalOpen] = useState(false);
     const [isBackingUp, setIsBackingUp] = useState(false);
@@ -166,6 +167,8 @@ export const useCloudSync = (
         handleActivateCloudMode,
         handleExportData,
         handleExportPomodoroCSV,
-        handleFileSelect
+        handleFileSelect,
+        handleSetCustomId,
+        handleClearCustomId
     };
 };

@@ -18,47 +18,46 @@ export const CustomTimeSelect = ({ value, onChange, options, isDark, disabled, p
     }, []);
 
     useEffect(() => {
-        if(isOpen) {
-            const target = value || '08:00';
-            const el = document.getElementById(`time-opt-${target}`);
-            el?.scrollIntoView({ block: 'center' });
+        if (isOpen) {
+            setTimeout(() => {
+                const target = value || '08:00';
+                const el = document.getElementById(`time-opt-${target}`);
+                el?.scrollIntoView({ block: 'center' });
+            }, 10);
         }
     }, [isOpen, value]);
 
     return (
-         <div className="relative" ref={containerRef}>
+        <div className="relative" ref={containerRef}>
             <button
                 type="button"
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 disabled={disabled}
-                className={`text-xs font-mono font-bold py-1.5 px-3 rounded-lg min-w-[70px] text-center transition-all flex items-center justify-between gap-2 border ${
-                    disabled ? 'opacity-40 cursor-not-allowed border-transparent' :
-                    isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200'
-                }`}
+                className={`text-xs font-mono font-bold py-1.5 px-3 rounded-lg min-w-[70px] text-center transition-all flex items-center justify-between gap-2 border ${disabled ? 'opacity-40 cursor-not-allowed border-transparent' :
+                        isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200'
+                    }`}
             >
                 <span>{value || placeholder || '--:--'}</span>
                 {!disabled && <ChevronDown size={10} className="opacity-50" />}
             </button>
             {isOpen && (
-                <div className={`absolute top-full left-0 mt-1 w-full min-w-[90px] max-h-48 overflow-y-auto custom-scrollbar rounded-lg shadow-xl border z-50 flex flex-col animate-in fade-in zoom-in-95 ${
-                    isDark ? 'bg-[#1e1e20] border-zinc-700' : 'bg-white border-gray-200'
-                }`}>
-                    {!value && <button onClick={() => {onChange(""); setIsOpen(false)}} className={`text-xs font-mono py-2 px-2 text-center hover:bg-red-500/10 hover:text-red-500 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Limpiar</button>}
+                <div className={`absolute top-full left-0 mt-1 w-full min-w-[90px] max-h-48 overflow-y-auto custom-scrollbar rounded-lg shadow-xl border z-50 flex flex-col animate-in fade-in zoom-in-95 ${isDark ? 'bg-[#1e1e20] border-zinc-700' : 'bg-white border-gray-200'
+                    }`}>
+                    {!value && <button onClick={() => { onChange(""); setIsOpen(false) }} className={`text-xs font-mono py-2 px-2 text-center hover:bg-red-500/10 hover:text-red-500 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Limpiar</button>}
                     {options.map((opt: string) => (
                         <button
                             key={opt}
                             id={`time-opt-${opt}`}
                             onClick={() => { onChange(opt); setIsOpen(false); }}
-                            className={`text-xs font-mono py-2 px-2 w-full text-center transition-colors ${
-                                value === opt ? 'bg-emerald-500 text-white font-bold' : isDark ? 'text-zinc-300 hover:bg-zinc-700' : 'text-gray-700 hover:bg-gray-100'
-                            }`}
+                            className={`text-xs font-mono py-2 px-2 w-full text-center transition-colors ${value === opt ? 'bg-emerald-500 text-white font-bold' : isDark ? 'text-zinc-300 hover:bg-zinc-700' : 'text-gray-700 hover:bg-gray-100'
+                                }`}
                         >
                             {opt}
                         </button>
                     ))}
                 </div>
             )}
-         </div>
+        </div>
     );
 };
 
@@ -118,7 +117,7 @@ export const NotificationToast = ({ notification, onClose }: { notification: Not
             {notification.type === 'error' && <AlertTriangle size={20} />}
             {notification.type === 'info' && <Info size={20} />}
             <span className="text-sm font-semibold">{notification.message}</span>
-            <button onClick={onClose} className="ml-4 opacity-70 hover:opacity-100 bg-white/10 p-1 rounded-full"><X size={14}/></button>
+            <button onClick={onClose} className="ml-4 opacity-70 hover:opacity-100 bg-white/10 p-1 rounded-full"><X size={14} /></button>
         </div>
     );
 };
@@ -131,9 +130,9 @@ export const MiniCalendar = ({ isDark, tasks, selectedDate, onSelectDate }: any)
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    let firstDayIndex = new Date(year, month, 1).getDay(); 
-    firstDayIndex = firstDayIndex === 0 ? 6 : firstDayIndex - 1; 
-    
+    let firstDayIndex = new Date(year, month, 1).getDay();
+    firstDayIndex = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+
     const daysWithTasks = useMemo(() => {
         const daysSet = new Set();
         tasks.forEach((t: Task) => { if (!t.completed && t.dueDate) { const tDate = parseLocalDate(t.dueDate); if (tDate && tDate.getMonth() === month && tDate.getFullYear() === year) { daysSet.add(tDate.getDate()); } } });

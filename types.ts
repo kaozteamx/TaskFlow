@@ -1,3 +1,5 @@
+import { Timestamp, FieldValue } from 'firebase/firestore';
+
 export interface Project {
     id: string;
     name: string;
@@ -5,7 +7,7 @@ export interface Project {
     link?: string; // Legacy support
     quickNotes?: string;
     color?: string; // 'emerald' | 'blue' | 'purple' | 'amber' | 'rose' | 'cyan' | 'indigo'
-    createdAt?: any;
+    createdAt?: Timestamp | FieldValue | Date | string;
 }
 
 export interface Task {
@@ -23,8 +25,8 @@ export interface Task {
     recurrence: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
     noteContent: string;
     lastReviewedAt?: string; // ISO String of last review time
-    createdAt?: any;
-    completedAt?: any;
+    createdAt?: Timestamp | FieldValue | Date | string;
+    completedAt?: Timestamp | FieldValue | Date | string;
     isExternal?: boolean; // New: For ICS events
     attachment?: string; // New: Base64 image string
 }
@@ -33,7 +35,7 @@ export interface PomodoroLog {
     id: string;
     projectId: string;
     durationMinutes: number;
-    createdAt: any;
+    createdAt: Timestamp | FieldValue | Date | string;
 }
 
 export interface NotificationType {

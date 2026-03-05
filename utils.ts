@@ -1,9 +1,9 @@
 import { Project, Task } from './types';
 
 // --- Constants ---
-export const HOME_VIEW = { 
-    id: 'ALL_TASKS_VIEW', 
-    name: 'Inicio', 
+export const HOME_VIEW = {
+    id: 'ALL_TASKS_VIEW',
+    name: 'Inicio',
     description: 'Visión general de todas tus tareas y prioridades.',
     links: [],
     quickNotes: ''
@@ -21,10 +21,10 @@ export const PROJECT_COLORS: Record<string, { label: string; dot: string; bg: st
 };
 
 export const PRIORITIES: Record<string, { label: string; color: string; bg: string; border: string; iconColor: string }> = {
-  high: { label: 'Alta', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-l-4 border-l-red-500', iconColor: 'fill-red-500' },
-  medium: { label: 'Media', color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-l-4 border-l-amber-500', iconColor: 'fill-amber-500' },
-  low: { label: 'Baja', color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-l-4 border-l-blue-500', iconColor: 'fill-blue-500' },
-  none: { label: 'Normal', color: 'text-gray-400', bg: 'bg-gray-100', border: 'border-l-4 border-l-transparent', iconColor: 'fill-transparent' }
+    high: { label: 'Alta', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-l-4 border-l-red-500', iconColor: 'fill-red-500' },
+    medium: { label: 'Media', color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-l-4 border-l-amber-500', iconColor: 'fill-amber-500' },
+    low: { label: 'Baja', color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-l-4 border-l-blue-500', iconColor: 'fill-blue-500' },
+    none: { label: 'Normal', color: 'text-gray-400', bg: 'bg-gray-100', border: 'border-l-4 border-l-transparent', iconColor: 'fill-transparent' }
 };
 
 export const RECURRENCE_OPTIONS: Record<string, { label: string; value: string }> = {
@@ -36,10 +36,11 @@ export const RECURRENCE_OPTIONS: Record<string, { label: string; value: string }
 };
 
 export const ALARM_SOUNDS: Record<string, { name: string; url: string }> = {
-  bell: { name: 'Campana', url: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3' }, 
-  beep: { name: 'Digital', url: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' },
-  classic: { name: 'Clásico', url: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg' },
-  zen: { name: 'Burbujas (Zen)', url: 'https://actions.google.com/sounds/v1/water/air_bubbles.ogg' }
+    custom: { name: 'Mi Audio', url: '/sounds/pomodoro.mp3' },
+    bell: { name: 'Campana', url: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3' },
+    beep: { name: 'Digital', url: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' },
+    classic: { name: 'Clásico', url: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg' },
+    zen: { name: 'Burbujas (Zen)', url: 'https://actions.google.com/sounds/v1/water/air_bubbles.ogg' }
 };
 
 export const TIME_SLOTS = (() => {
@@ -52,66 +53,65 @@ export const TIME_SLOTS = (() => {
     return slots;
 })();
 
-export const workerCode = `self.onmessage = function(e) { if (e.data === 'start') { if (self.timerId) clearInterval(self.timerId); self.timerId = setInterval(function() { postMessage('tick'); }, 1000); } else if (e.data === 'stop') { if (self.timerId) clearInterval(self.timerId); } };`;
 
 // --- Helper Functions ---
 export const safeDate = (val: any): Date | null => {
     if (!val) return null;
     if (val instanceof Date) return val;
-    if (val.seconds !== undefined) return new Date(val.seconds * 1000); 
+    if (val.seconds !== undefined) return new Date(val.seconds * 1000);
     if (val.toDate && typeof val.toDate === 'function') return val.toDate();
     const d = new Date(val);
     return isNaN(d.getTime()) ? null : d;
 };
 
 export const parseLocalDate = (dateString: string): Date | null => {
-  if (!dateString) return null;
-  return new Date(dateString + 'T00:00:00');
+    if (!dateString) return null;
+    return new Date(dateString + 'T00:00:00');
 };
 
 export const formatDate = (dateString: string): string => {
-  if (!dateString) return '';
-  const date = parseLocalDate(dateString);
-  if (!date || isNaN(date.getTime())) return '';
-  const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-  return date.toLocaleDateString('es-ES', options);
+    if (!dateString) return '';
+    const date = parseLocalDate(dateString);
+    if (!date || isNaN(date.getTime())) return '';
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+    return date.toLocaleDateString('es-ES', options);
 };
 
 export const formatCreationDate = (timestamp: any): string => {
-  const date = safeDate(timestamp);
-  if (!date) return 'Reciente';
-  return date.toLocaleDateString('es-ES', { 
-    day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' 
-  });
+    const date = safeDate(timestamp);
+    if (!date) return 'Reciente';
+    return date.toLocaleDateString('es-ES', {
+        day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
+    });
 };
 
 export const getDaysOpen = (createdAt: any): number => {
     if (!createdAt) return 0;
     const created = safeDate(createdAt);
     if (!created) return 0;
-    const diff = new Date().setHours(0,0,0,0) - new Date(created).setHours(0,0,0,0);
+    const diff = new Date().setHours(0, 0, 0, 0) - new Date(created).setHours(0, 0, 0, 0);
     return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
 };
 
 export const isOverdue = (dateString: string): boolean => {
-  if (!dateString) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = parseLocalDate(dateString);
-  if (!due) return false;
-  return due < today;
+    if (!dateString) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = parseLocalDate(dateString);
+    if (!due) return false;
+    return due < today;
 };
 
 export const isDueToday = (dateString: string): boolean => {
-  if (!dateString) return false;
-  const today = new Date();
-  const due = parseLocalDate(dateString);
-  if (!due) return false;
-  return (
-    today.getDate() === due.getDate() &&
-    today.getMonth() === due.getMonth() &&
-    today.getFullYear() === due.getFullYear()
-  );
+    if (!dateString) return false;
+    const today = new Date();
+    const due = parseLocalDate(dateString);
+    if (!due) return false;
+    return (
+        today.getDate() === due.getDate() &&
+        today.getMonth() === due.getMonth() &&
+        today.getFullYear() === due.getFullYear()
+    );
 };
 
 // Adjust a date to the next business day (Mon-Fri) if it falls on a weekend
@@ -131,28 +131,28 @@ export const calculateNextDueDate = (currentDateStr: string, recurrenceType: str
     const nextDate = new Date(baseDate);
 
     switch (recurrenceType) {
-        case 'daily': 
-            nextDate.setDate(baseDate.getDate() + 1); 
+        case 'daily':
+            nextDate.setDate(baseDate.getDate() + 1);
             break;
-        case 'weekly': 
-            nextDate.setDate(baseDate.getDate() + 7); 
+        case 'weekly':
+            nextDate.setDate(baseDate.getDate() + 7);
             break;
-        case 'monthly': 
+        case 'monthly':
             const d = baseDate.getDate();
-            nextDate.setMonth(baseDate.getMonth() + 1); 
+            nextDate.setMonth(baseDate.getMonth() + 1);
             if (nextDate.getDate() !== d) {
-                 nextDate.setDate(0); 
+                nextDate.setDate(0);
             }
             break;
-        case 'yearly': 
-            nextDate.setFullYear(baseDate.getFullYear() + 1); 
+        case 'yearly':
+            nextDate.setFullYear(baseDate.getFullYear() + 1);
             break;
         default: return null;
     }
-    
+
     // Apply Business Day Logic
     const businessDate = adjustToBusinessDay(nextDate);
-    
+
     const y = businessDate.getFullYear();
     const m = String(businessDate.getMonth() + 1).padStart(2, '0');
     const d = String(businessDate.getDate()).padStart(2, '0');
@@ -179,10 +179,10 @@ export const calculateDuration = (startTime: string, endTime: string): number =>
 };
 
 export const getMonday = (d: Date) => {
-  d = new Date(d);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
-  return new Date(d.setDate(diff));
+    d = new Date(d);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.setDate(diff));
 };
 
 // --- ICS PARSER (Outlook/Google) ---
@@ -197,13 +197,13 @@ export const parseICS = (icsContent: string): Partial<Task>[] => {
         if (!dateStr) return null;
         // Clean key params like ;TZID=...
         const cleanDateStr = dateStr.split(':').pop() || '';
-        
+
         const year = cleanDateStr.substring(0, 4);
         const month = cleanDateStr.substring(4, 6);
         const day = cleanDateStr.substring(6, 8);
         const hour = cleanDateStr.substring(9, 11);
         const min = cleanDateStr.substring(11, 13);
-        
+
         // This is a naive parse assuming local time match or ignoring timezone complexity for MVP
         // Ideal solution requires full TZ parsing library
         return new Date(`${year}-${month}-${day}T${hour || '00'}:${min || '00'}:00`);
@@ -218,11 +218,11 @@ export const parseICS = (icsContent: string): Partial<Task>[] => {
             if (currentEvent && currentEvent.summary && currentEvent.dtstart) {
                 const start = parseICSDate(currentEvent.dtstart);
                 const end = parseICSDate(currentEvent.dtend);
-                
+
                 if (start) {
                     const dateStr = start.toISOString().split('T')[0];
-                    const timeStr = `${String(start.getHours()).padStart(2,'0')}:${String(start.getMinutes()).padStart(2,'0')}`;
-                    
+                    const timeStr = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+
                     let duration = 60;
                     if (end) {
                         const diffMs = end.getTime() - start.getTime();

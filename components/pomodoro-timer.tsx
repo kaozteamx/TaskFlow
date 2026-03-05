@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Timer, Coffee, Settings, X, Pause, Play, Square } from 'lucide-react';
-import { ALARM_SOUNDS, workerCode } from '../utils';
+import { ALARM_SOUNDS } from '../utils';
 
 export const PomodoroTimer = ({ isDark, isSidebarExpanded, onFocusComplete }: any) => {
     const DEFAULT_FOCUS = 52;
@@ -11,15 +11,14 @@ export const PomodoroTimer = ({ isDark, isSidebarExpanded, onFocusComplete }: an
     const [showSettings, setShowSettings] = useState(false);
     const [customFocus, setCustomFocus] = useState(DEFAULT_FOCUS);
     const [customBreak, setCustomBreak] = useState(DEFAULT_BREAK);
-    const [selectedSound, setSelectedSound] = useState('bell'); 
+    const [selectedSound, setSelectedSound] = useState('custom');
     const audioPlayerRef = useRef<HTMLAudioElement>(null);
     const onFocusCompleteRef = useRef(onFocusComplete);
     const workerRef = useRef<Worker | null>(null);
     const endTimeRef = useRef<number | null>(null);
 
     useEffect(() => {
-        const blob = new Blob([workerCode], { type: "application/javascript" });
-        const worker = new Worker(URL.createObjectURL(blob));
+        const worker = new Worker(new URL('../pomodoro.worker.ts', import.meta.url), { type: 'module' });
         workerRef.current = worker;
         worker.onmessage = (e) => { if (e.data === 'tick') setTimeLeft(prev => prev - 1); };
         return () => worker.terminate();
@@ -56,14 +55,14 @@ export const PomodoroTimer = ({ isDark, isSidebarExpanded, onFocusComplete }: an
 
     useEffect(() => {
         if (timeLeft <= 0 && isActive) {
-            setIsActive(false); 
-            if (audioPlayerRef.current) { audioPlayerRef.current.volume = 1.0; audioPlayerRef.current.currentTime = 0; audioPlayerRef.current.play().catch(() => {}); }
-            if ("Notification" in window && Notification.permission === "granted") try { new Notification("TaskFlow", { body: mode === 'focus' ? "¡Tiempo de enfoque terminado!" : "¡Descanso terminado!", icon: '/favicon.ico' }); } catch (e) {}
+            setIsActive(false);
+            if (audioPlayerRef.current) { audioPlayerRef.current.volume = 1.0; audioPlayerRef.current.currentTime = 0; audioPlayerRef.current.play().catch(() => { }); }
+            if ("Notification" in window && Notification.permission === "granted") try { new Notification("TaskFlow", { body: mode === 'focus' ? "¡Tiempo de enfoque terminado!" : "¡Descanso terminado!", icon: '/favicon.ico' }); } catch (e) { }
             if (mode === 'focus') {
                 if (onFocusCompleteRef.current) onFocusCompleteRef.current(customFocus);
                 setMode('break');
                 setTimeLeft(customBreak * 60);
-                setTimeout(() => setIsActive(true), 100); 
+                setTimeout(() => setIsActive(true), 100);
             } else {
                 setMode('focus');
                 setTimeLeft(customFocus * 60);
@@ -75,7 +74,7 @@ export const PomodoroTimer = ({ isDark, isSidebarExpanded, onFocusComplete }: an
         if ("Notification" in window && Notification.permission !== "granted") Notification.requestPermission();
         if (timeLeft === 0) { setTimeLeft(mode === 'focus' ? customFocus * 60 : customBreak * 60); setIsActive(true); } else { setIsActive(!isActive); }
     };
-    
+
     const resetTimer = () => {
         // If manually stopped during focus, save the elapsed time
         if (mode === 'focus' && timeLeft < customFocus * 60) {
@@ -86,8 +85,8 @@ export const PomodoroTimer = ({ isDark, isSidebarExpanded, onFocusComplete }: an
                 onFocusCompleteRef.current(minutesLogged);
             }
         }
-        setIsActive(false); 
-        setMode('focus'); 
+        setIsActive(false);
+        setMode('focus');
         setTimeLeft(customFocus * 60);
     };
 
@@ -104,7 +103,7 @@ export const PomodoroTimer = ({ isDark, isSidebarExpanded, onFocusComplete }: an
 
     if (showSettings) return (
         <div className={`mb-4 mx-4 p-3 rounded-xl border ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-gray-50 border-gray-200'}`}>
-            <div className="flex justify-between items-center mb-3"><span className={`text-xs font-bold uppercase ${isDark ? 'text-zinc-500' : 'text-gray-500'}`}>Ajustes</span><button onClick={() => setShowSettings(false)} className={isDark ? 'text-zinc-500 hover:text-white' : 'text-gray-400 hover:text-black'}><X size={14}/></button></div>
+            <div className="flex justify-between items-center mb-3"><span className={`text-xs font-bold uppercase ${isDark ? 'text-zinc-500' : 'text-gray-500'}`}>Ajustes</span><button onClick={() => setShowSettings(false)} className={isDark ? 'text-zinc-500 hover:text-white' : 'text-gray-400 hover:text-black'}><X size={14} /></button></div>
             <form onSubmit={saveSettings} className="space-y-3">
                 <div><label className={`block text-[10px] uppercase font-bold mb-1 ${isDark ? 'text-zinc-400' : 'text-gray-600'}`}>Focus (min)</label><input type="number" min="1" value={customFocus} onChange={e => setCustomFocus(Number(e.target.value))} className={`w-full px-2 py-1 rounded text-sm outline-none ${isDark ? 'bg-zinc-800 text-white' : 'bg-white text-black border border-gray-200'}`} /></div>
                 <div><label className={`block text-[10px] uppercase font-bold mb-1 ${isDark ? 'text-zinc-400' : 'text-gray-600'}`}>Descanso (min)</label><input type="number" min="1" value={customBreak} onChange={e => setCustomBreak(Number(e.target.value))} className={`w-full px-2 py-1 rounded text-sm outline-none ${isDark ? 'bg-zinc-800 text-white' : 'bg-white text-black border border-gray-200'}`} /></div>
