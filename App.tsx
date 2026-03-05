@@ -65,7 +65,7 @@ const App = () => {
         tasks: fetchedTasks,
         editingTask, setEditingTask, handleUpdateNote, handleUpdateTask, handleUpdateTaskTime, handleUpdateTaskDetail,
         handleReparentTask, handleMoveTaskToProject, handleToggleTask, handleUpdateTaskStatus, handleKanbanQuickAdd,
-        handleDeleteTask, handleToggleReview, handleQuickAddTask, handleAddSubtask
+        handleDeleteTask, handleToggleReview, handleQuickAddTask, handleAddSubtask, handleToggleTracking, handleResetTracking
     } = useTasks(userId, getCollectionRef, setNotification, setConfirmModal, projects, activeProject, setLoading);
 
     // Sync tasks up to the component for other features or map properly
@@ -485,7 +485,10 @@ const App = () => {
                             </div>
 
                             {activeProject.id !== HOME_VIEW.id && (
-                                <form onSubmit={handleQuickAddTask} className="mb-8">
+                                <form onSubmit={async (e) => {
+                                    const success = await handleQuickAddTask(e, quickTaskTitle, selectedDateFilter);
+                                    if (success) setQuickTaskTitle('');
+                                }} className="mb-8">
                                     <div className={`flex items-center gap-3 p-4 rounded-xl border border-dashed transition-all cursor-text ${isDark ? 'border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/30' : 'bg-white border-gray-300 hover:border-emerald-400 hover:bg-emerald-50/10'}`}>
                                         <Plus size={20} className={isDark ? 'text-zinc-600' : 'text-gray-400'} />
                                         <input type="text" value={quickTaskTitle} onChange={(e) => setQuickTaskTitle(e.target.value)} className={`bg-transparent border-none outline-none w-full text-[15px] ${isDark ? 'text-zinc-300 placeholder-zinc-600' : 'text-gray-700 placeholder-gray-400'}`} placeholder="Añadir tarea..." />
@@ -517,6 +520,7 @@ const App = () => {
                                             subtasksCount={subtasks.length}
                                             subtasksCompletedCount={completedSubCount}
                                             subtasks={subtasks}
+                                            onToggleTracking={handleToggleTracking}
                                         />
                                     )
                                 })}
@@ -550,6 +554,7 @@ const App = () => {
                                                             subtasksCount={subtasks.length}
                                                             subtasksCompletedCount={completedSubCount}
                                                             subtasks={subtasks}
+                                                            onToggleTracking={handleToggleTracking}
                                                         />
                                                     )
                                                 })}
@@ -600,6 +605,8 @@ const App = () => {
                     setChecklistModalTask={setChecklistModalTask}
                     panelRef={detailsPanelRef}
                     onReparentTask={handleReparentTask}
+                    onToggleTracking={handleToggleTracking}
+                    onResetTracking={handleResetTracking}
                 />
             </div>
             <NotificationToast notification={notification} onClose={() => setNotification(null)} />

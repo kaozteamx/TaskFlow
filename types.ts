@@ -23,6 +23,8 @@ export interface Task {
     parentTaskId: string | null;
     priority: 'high' | 'medium' | 'low' | 'none';
     recurrence: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+    timeSpent?: number; // Total accumulated time in seconds
+    trackingStartedAt?: number | null; // Timestamp (Date.now()) if currently tracking, else null
     noteContent: string;
     lastReviewedAt?: string; // ISO String of last review time
     createdAt?: Timestamp | FieldValue | Date | string;

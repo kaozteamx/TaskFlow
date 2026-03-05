@@ -24,7 +24,7 @@ const calculateDayLayouts = (dayTasks: Task[]) => {
     // 1. Sort tasks by start time
     const sorted = [...dayTasks].sort((a, b) => getMinutes(a.dueTime!) - getMinutes(b.dueTime!));
     const layouts: Record<string, { left: number, width: number }> = {};
-    
+
     // 2. Group into overlapping clusters
     const clusters: Task[][] = [];
     let currentCluster: Task[] = [];
@@ -58,7 +58,7 @@ const calculateDayLayouts = (dayTasks: Task[]) => {
             const start = getMinutes(task.dueTime!);
             let placed = false;
             // Try to fit in existing column
-            for(const col of columns) {
+            for (const col of columns) {
                 const lastTask = col[col.length - 1];
                 const lastEnd = getMinutes(lastTask.dueTime!) + (lastTask.duration || 60);
                 if (start >= lastEnd) {
@@ -94,16 +94,15 @@ const BacklogTaskCard = memo(({ task, projects, isDark, onDragStart, onEditTask 
     const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
 
     return (
-        <div 
-            draggable 
+        <div
+            draggable
             onMouseDown={(e) => e.stopPropagation()}
             onDragStart={(e) => onDragStart(e, task.id)}
             onClick={() => onEditTask(task)}
-            className={`group relative p-3 mb-2 rounded-xl text-xs cursor-grab active:cursor-grabbing transition-all duration-200 hover:scale-[1.02] select-none shadow-sm border ${
-                isDark 
-                    ? 'bg-zinc-800/40 border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700' 
+            className={`group relative p-3 mb-2 rounded-xl text-xs cursor-grab active:cursor-grabbing transition-all duration-200 hover:scale-[1.02] select-none shadow-sm border ${isDark
+                    ? 'bg-zinc-800/40 border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700'
                     : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-md'
-            } ${task.completed ? 'opacity-50' : ''}`}
+                } ${task.completed ? 'opacity-50' : ''}`}
         >
             <div className="flex items-start gap-2.5">
                 {/* Drag Handle Indicator */}
@@ -141,7 +140,7 @@ const AllDayTaskCard = memo(({ task, projects, isDark, onDragStart, onEditTask }
     };
 
     return (
-        <div 
+        <div
             draggable={!isVirtual}
             onMouseDown={(e) => e.stopPropagation()}
             onDragStart={(e) => !isVirtual && onDragStart(e, task.id)}
@@ -163,7 +162,7 @@ const TimeGridTask = memo(({ task, layout, projects, isDark, resizingTask, dragg
         top = (h * 60 + m) * (PIXELS_PER_HOUR / 60);
     }
     let height = (task.duration || 60) * (PIXELS_PER_HOUR / 60);
-    
+
     const project = projects.find((p: any) => p.id === task.projectId);
     const colorStyle = PROJECT_COLORS[project?.color || 'gray'];
     const isDragging = draggingTaskId === task.id;
@@ -206,44 +205,45 @@ const TimeGridTask = memo(({ task, layout, projects, isDark, resizingTask, dragg
                 {height > 30 && <div className={`truncate opacity-70 ${colorStyle.text}`}>{task.dueTime} - {getEndTime(task.dueTime || '00:00', task.duration || 60)}</div>}
             </div>
             {!isVirtual && (
-                <div 
+                <div
                     onMouseDown={(e) => onResizeStart(e, task.id, task.duration || 60)}
                     className="h-2 w-full cursor-s-resize absolute bottom-0 left-0 flex justify-center items-end opacity-0 group-hover:opacity-100 bg-black/5 dark:bg-white/10 pointer-events-auto"
                 >
-                     <div className="w-8 h-1 bg-gray-400 rounded-full mb-0.5" />
+                    <div className="w-8 h-1 bg-gray-400 rounded-full mb-0.5" />
                 </div>
             )}
         </div>
     )
 });
 
-export const CalendarBoard = ({ 
-    tasks, 
-    projects, 
-    onUpdateTask, 
-    onUpdateTaskTime, 
-    isDark, 
+export const CalendarBoard = ({
+    tasks,
+    projects,
+    onUpdateTask,
+    onUpdateTaskTime,
+    isDark,
     onEditTask,
-}: { 
-    tasks: Task[], 
-    projects: Project[], 
-    onUpdateTask: (id: string, date: string | null) => void, 
+}: {
+    tasks: Task[],
+    projects: Project[],
+    onUpdateTask: (id: string, date: string | null) => void,
     onUpdateTaskTime: (id: string, date: string, time: string, duration: number) => void,
-    isDark: boolean, 
+    isDark: boolean,
     onEditTask: (t: Task) => void,
 }) => {
-    const [currentWeekStart, setCurrentWeekStart] = useState(getMonday(new Date()));
+    const [currentDate, setCurrentDate] = useState(() => new Date());
+    const [viewType, setViewType] = useState<'week' | 'day'>('week');
     const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
     const [visibleProjects, setVisibleProjects] = useState<Record<string, boolean>>({});
     const [isBacklogOpen, setIsBacklogOpen] = useState(true);
     const [isAllDayExpanded, setIsAllDayExpanded] = useState(true);
     const [now, setNow] = useState(new Date());
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    
+
     // Interaction States
     const [resizingTask, setResizingTask] = useState<string | null>(null);
     const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
-    
+
     // Resize Refs
     const [resizeStartY, setResizeStartY] = useState<number>(0);
     const [resizeStartHeight, setResizeStartHeight] = useState<number>(0);
@@ -267,27 +267,30 @@ export const CalendarBoard = ({
         const initExp: any = {};
         const initVis: any = {};
         projects.forEach(p => { initExp[p.id] = true; initVis[p.id] = true; });
-        setExpandedProjects(prev => ({...initExp, ...prev}));
-        setVisibleProjects(prev => ({...initVis, ...prev}));
+        setExpandedProjects(prev => ({ ...initExp, ...prev }));
+        setVisibleProjects(prev => ({ ...initVis, ...prev }));
     }, [projects]);
 
-    const toggleProject = (pid: string) => setExpandedProjects(prev => ({...prev, [pid]: !prev[pid]}));
+    const toggleProject = (pid: string) => setExpandedProjects(prev => ({ ...prev, [pid]: !prev[pid] }));
     const toggleProjectVisibility = (pid: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        setVisibleProjects(prev => ({...prev, [pid]: !prev[pid]}));
+        setVisibleProjects(prev => ({ ...prev, [pid]: !prev[pid] }));
     };
-    
+
     const weekDays = useMemo(() => {
+        if (viewType === 'day') {
+            return [currentDate];
+        }
         const days = [];
-        const start = new Date(currentWeekStart);
+        const start = getMonday(currentDate);
         // Only Mon-Fri (5 days)
-        for(let i=0; i<5; i++) {
+        for (let i = 0; i < 5; i++) {
             const d = new Date(start);
             d.setDate(start.getDate() + i);
             days.push(d);
         }
         return days;
-    }, [currentWeekStart]);
+    }, [currentDate, viewType]);
 
     const visibleTasks = useMemo(() => tasks.filter(t => visibleProjects[t.projectId]), [tasks, visibleProjects]);
 
@@ -306,7 +309,7 @@ export const CalendarBoard = ({
 
             weekDays.forEach(day => {
                 const dayStr = toLocalDateStr(day);
-                
+
                 // If this is the ACTUAL due date, the real task is already in visibleTasks, so skip
                 if (dayStr === task.dueDate) return;
 
@@ -314,7 +317,7 @@ export const CalendarBoard = ({
                 if (day < taskDate) return;
 
                 let matches = false;
-                
+
                 if (task.recurrence === 'daily') {
                     // Daily tasks match every business day
                     matches = true;
@@ -332,7 +335,7 @@ export const CalendarBoard = ({
                     if (day.getDay() === 1) {
                         const prevSunday = new Date(day); prevSunday.setDate(checkDay - 1);
                         const prevSaturday = new Date(day); prevSaturday.setDate(checkDay - 2);
-                        
+
                         if (prevSunday.getDate() === targetDay && prevSunday.getMonth() === day.getMonth()) matches = true;
                         if (prevSaturday.getDate() === targetDay && prevSaturday.getMonth() === day.getMonth()) matches = true;
                     }
@@ -346,11 +349,11 @@ export const CalendarBoard = ({
                     if (checkDay === targetDay && checkMonth === targetMonth) matches = true;
 
                     if (day.getDay() === 1) {
-                         const prevSunday = new Date(day); prevSunday.setDate(checkDay - 1);
-                         const prevSaturday = new Date(day); prevSaturday.setDate(checkDay - 2);
+                        const prevSunday = new Date(day); prevSunday.setDate(checkDay - 1);
+                        const prevSaturday = new Date(day); prevSaturday.setDate(checkDay - 2);
 
-                         if (prevSunday.getDate() === targetDay && prevSunday.getMonth() === targetMonth) matches = true;
-                         if (prevSaturday.getDate() === targetDay && prevSaturday.getMonth() === targetMonth) matches = true;
+                        if (prevSunday.getDate() === targetDay && prevSunday.getMonth() === targetMonth) matches = true;
+                        if (prevSaturday.getDate() === targetDay && prevSaturday.getMonth() === targetMonth) matches = true;
                     }
                 }
 
@@ -373,7 +376,7 @@ export const CalendarBoard = ({
     const handleDragStart = (e: React.DragEvent, taskId: string) => {
         e.stopPropagation(); // Prevent bubbling to container
         setDraggingTaskId(taskId);
-        
+
         // Calculate the offset from the top of the card
         const target = e.currentTarget as HTMLElement;
         const rect = target.getBoundingClientRect();
@@ -391,8 +394,8 @@ export const CalendarBoard = ({
     const handleDropOnBacklog = (e: React.DragEvent) => {
         e.preventDefault();
         const taskId = e.dataTransfer.getData("taskId");
-        if(taskId) {
-            onUpdateTask(taskId, null); 
+        if (taskId) {
+            onUpdateTask(taskId, null);
             setDraggingTaskId(null);
         }
     };
@@ -405,10 +408,10 @@ export const CalendarBoard = ({
     const handleDropOnAllDay = (e: React.DragEvent, date: Date) => {
         e.preventDefault();
         const taskId = e.dataTransfer.getData("taskId");
-        if(taskId) {
-             const dateStr = toLocalDateStr(date);
-             onUpdateTaskTime(taskId, dateStr, '', 0); 
-             setDraggingTaskId(null);
+        if (taskId) {
+            const dateStr = toLocalDateStr(date);
+            onUpdateTaskTime(taskId, dateStr, '', 0);
+            setDraggingTaskId(null);
         }
     };
 
@@ -419,21 +422,21 @@ export const CalendarBoard = ({
         const grabOffsetStr = e.dataTransfer.getData("grabOffsetY");
         const grabOffsetY = grabOffsetStr ? parseFloat(grabOffsetStr) : 0;
 
-        if(taskId) {
+        if (taskId) {
             const rect = e.currentTarget.getBoundingClientRect();
             // Mouse position relative to the grid
             const mouseInGridY = e.clientY - rect.top;
-            
+
             // Calculate where the TOP of the card is
             // (Mouse Position) - (Distance from mouse to top of card)
             const taskTopY = mouseInGridY - grabOffsetY;
-            
+
             // Prevent dropping 'above' the day (negative time)
             const safeY = Math.max(0, taskTopY);
-            
+
             const totalMinutes = (safeY / PIXELS_PER_HOUR) * 60;
             const snappedMinutes = Math.floor(totalMinutes / 15) * 15;
-            
+
             const hours = Math.floor(snappedMinutes / 60);
             const minutes = snappedMinutes % 60;
             const clampedHours = Math.max(0, Math.min(23, hours));
@@ -459,7 +462,7 @@ export const CalendarBoard = ({
         const handleMouseMove = (e: MouseEvent) => {
             if (resizingTask) {
                 const deltaY = e.clientY - resizeStartY;
-                const newHeight = Math.max(PIXELS_PER_15_MIN, resizeStartHeight + deltaY); 
+                const newHeight = Math.max(PIXELS_PER_15_MIN, resizeStartHeight + deltaY);
                 setTempHeight(newHeight);
             }
         };
@@ -488,14 +491,31 @@ export const CalendarBoard = ({
         }
     }, [resizingTask, resizeStartY, resizeStartHeight, tempHeight, tasks]);
 
-    const weekStartStr = currentWeekStart.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
-    const weekEnd = new Date(currentWeekStart); weekEnd.setDate(weekEnd.getDate()+4);
+    const weekStartStr = getMonday(currentDate).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+    const weekEnd = new Date(getMonday(currentDate)); weekEnd.setDate(weekEnd.getDate() + 4);
     const weekEndStr = weekEnd.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+    const dayStr = currentDate.toLocaleDateString('es-ES', { weekday: 'long', month: 'long', day: 'numeric' });
+
+    const handlePrev = () => {
+        setCurrentDate(d => {
+            const n = new Date(d);
+            n.setDate(n.getDate() - (viewType === 'week' ? 7 : 1));
+            return n;
+        });
+    };
+
+    const handleNext = () => {
+        setCurrentDate(d => {
+            const n = new Date(d);
+            n.setDate(n.getDate() + (viewType === 'week' ? 7 : 1));
+            return n;
+        });
+    };
 
     return (
         <div className="flex flex-1 h-full overflow-hidden">
             {/* BACKLOG PANEL */}
-            <div 
+            <div
                 onDragOver={handleDragOver}
                 onDrop={handleDropOnBacklog}
                 className={`transition-all duration-300 ease-in-out flex flex-col border-r flex-shrink-0 z-20 ${isBacklogOpen ? 'w-72' : 'w-12'} ${isDark ? 'bg-[#121214]/50 border-zinc-800' : 'bg-gray-50/50 border-gray-200'}`}
@@ -511,7 +531,7 @@ export const CalendarBoard = ({
                                 <PanelLeftClose size={16} />
                             </button>
                         </div>
-                        
+
                         <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-4">
                             {/* Empty State Hint */}
                             <div className={`mb-4 px-2 text-[10px] leading-relaxed ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>
@@ -519,13 +539,13 @@ export const CalendarBoard = ({
                             </div>
 
                             {projects.map(proj => {
-                                const projTasks = tasks.filter(t => t.projectId === proj.id && !t.completed && !t.dueDate); 
+                                const projTasks = tasks.filter(t => t.projectId === proj.id && !t.completed && !t.dueDate);
                                 const colorStyle = PROJECT_COLORS[proj.color || 'gray'];
                                 const isEmpty = projTasks.length === 0;
 
                                 return (
                                     <div key={proj.id} className="mb-2">
-                                        <div 
+                                        <div
                                             onClick={() => toggleProject(proj.id)}
                                             className={`flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${isDark ? 'hover:bg-zinc-800/50' : 'hover:bg-gray-200/50'}`}
                                         >
@@ -535,7 +555,7 @@ export const CalendarBoard = ({
                                                 <span className={`text-xs font-semibold truncate ${isDark ? 'text-zinc-400' : 'text-gray-600'}`}>{proj.name}</span>
                                                 {!isEmpty && <span className={`text-[9px] px-1 rounded ${isDark ? 'bg-zinc-800 text-zinc-500' : 'bg-gray-200 text-gray-500'}`}>{projTasks.length}</span>}
                                             </div>
-                                            <button 
+                                            <button
                                                 onClick={(e) => toggleProjectVisibility(proj.id, e)}
                                                 className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'text-zinc-500 hover:text-white' : 'text-gray-400 hover:text-black'}`}
                                                 title={visibleProjects[proj.id] ? "Ocultar en calendario" : "Mostrar en calendario"}
@@ -543,14 +563,14 @@ export const CalendarBoard = ({
                                                 {visibleProjects[proj.id] ? <Eye size={12} /> : <EyeOff size={12} />}
                                             </button>
                                         </div>
-                                        
+
                                         {expandedProjects[proj.id] && (
                                             <div className="pl-6 pt-1 space-y-1">
                                                 {isEmpty && <div className={`text-[10px] italic py-1 ${isDark ? 'text-zinc-700' : 'text-gray-300'}`}>Sin tareas pendientes</div>}
                                                 {projTasks.map(t => (
-                                                    <BacklogTaskCard 
-                                                        key={t.id} 
-                                                        task={t} 
+                                                    <BacklogTaskCard
+                                                        key={t.id}
+                                                        task={t}
                                                         projects={projects}
                                                         isDark={isDark}
                                                         onDragStart={handleDragStart}
@@ -566,7 +586,7 @@ export const CalendarBoard = ({
                     </>
                 ) : (
                     <div className="flex-1 flex flex-col items-center pt-6 gap-6">
-                         <button onClick={() => setIsBacklogOpen(true)} className={`p-2 rounded-lg transition-colors ${isDark ? 'text-zinc-500 hover:text-white hover:bg-zinc-800' : 'text-gray-400 hover:text-black hover:bg-gray-200'}`}>
+                        <button onClick={() => setIsBacklogOpen(true)} className={`p-2 rounded-lg transition-colors ${isDark ? 'text-zinc-500 hover:text-white hover:bg-zinc-800' : 'text-gray-400 hover:text-black hover:bg-gray-200'}`}>
                             <PanelLeftOpen size={20} />
                         </button>
                         <div className={`writing-vertical-rl text-[10px] font-bold uppercase tracking-wider opacity-50 ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>
@@ -577,26 +597,42 @@ export const CalendarBoard = ({
             </div>
 
             {/* MAIN CALENDAR CONTENT (Single Scroll Container for alignment) */}
-            <div 
+            <div
                 ref={scrollContainerRef}
                 className={`flex-1 h-full overflow-y-auto custom-scrollbar relative ${isDark ? 'bg-[#09090b]' : 'bg-white'}`}
                 onDragEnd={handleDragEnd} // Global drag end handler
             >
                 {/* Min-width wrapper to force horizontal scroll if needed, keeping columns aligned */}
                 <div className="flex flex-col min-w-[700px]">
-                    
+
                     {/* STICKY HEADER AREA */}
                     <div className={`sticky top-0 z-30 border-b shadow-sm ${isDark ? 'bg-[#09090b] border-zinc-800' : 'bg-white border-gray-200'}`}>
                         {/* Header Controls */}
-                        <div className="h-12 border-b flex items-center justify-between px-6 flex-shrink-0">
+                        <div className="h-12 border-b flex items-center justify-between px-4 flex-shrink-0">
                             <div className="flex items-center gap-4">
-                                <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                                    {weekStartStr} - {weekEndStr}
+                                <h2 className={`text-lg font-bold capitalize ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                                    {viewType === 'week' ? `${weekStartStr} - ${weekEndStr}` : dayStr}
                                 </h2>
                                 <div className="flex items-center gap-1">
-                                    <button onClick={() => setCurrentWeekStart(d => { const n = new Date(d); n.setDate(d.getDate()-7); return n;})} className={`p-1.5 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}><ChevronLeft size={18}/></button>
-                                    <button onClick={() => setCurrentWeekStart(getMonday(new Date()))} className={`text-xs font-bold px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>Hoy</button>
-                                    <button onClick={() => setCurrentWeekStart(d => { const n = new Date(d); n.setDate(d.getDate()+7); return n;})} className={`p-1.5 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}><ChevronRight size={18}/></button>
+                                    <button onClick={handlePrev} className={`p-1.5 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}><ChevronLeft size={18} /></button>
+                                    <button onClick={() => setCurrentDate(new Date())} className={`text-xs font-bold px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>Hoy</button>
+                                    <button onClick={handleNext} className={`p-1.5 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}><ChevronRight size={18} /></button>
+
+                                    <div className={`flex items-center ml-2 p-1 rounded-lg border ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-gray-50 border-gray-200'}`}>
+                                        <button
+                                            onClick={() => setViewType('week')}
+                                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${viewType === 'week' ? (isDark ? 'bg-zinc-700 text-white' : 'bg-white text-gray-800 shadow-sm') : (isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-gray-500 hover:text-gray-700')}`}
+                                        >
+                                            Semana
+                                        </button>
+                                        <button
+                                            onClick={() => setViewType('day')}
+                                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${viewType === 'day' ? (isDark ? 'bg-zinc-700 text-white' : 'bg-white text-gray-800 shadow-sm') : (isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-gray-500 hover:text-gray-700')}`}
+                                        >
+                                            Día
+                                        </button>
+                                    </div>
+
                                     <button onClick={() => setIsAllDayExpanded(!isAllDayExpanded)} className={`ml-2 p-1.5 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`} title={isAllDayExpanded ? "Colapsar todo el día" : "Expandir"}>
                                         {isAllDayExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                                     </button>
@@ -608,9 +644,9 @@ export const CalendarBoard = ({
                         <div className="flex">
                             {/* Empty corner block (over time labels) */}
                             <div className={`w-14 flex-shrink-0 border-r ${isDark ? 'border-zinc-800 bg-[#09090b]' : 'border-gray-100 bg-white'}`} />
-                            
+
                             {/* Day Columns */}
-                            <div className="flex-1 grid grid-cols-5 divide-x">
+                            <div className={`flex-1 grid ${viewType === 'week' ? 'grid-cols-5' : 'grid-cols-1'} divide-x`}>
                                 {weekDays.map((day, i) => {
                                     const dateStr = toLocalDateStr(day);
                                     const isToday = isDueToday(dateStr);
@@ -619,8 +655,8 @@ export const CalendarBoard = ({
                                     const dayTasks = allWeekTasks.filter(t => t.dueDate === dateStr && !t.completed);
                                     const untimedTasks = dayTasks.filter(t => !t.dueTime);
                                     return (
-                                        <div 
-                                            key={i} 
+                                        <div
+                                            key={i}
                                             onDragOver={handleDragOver}
                                             onDrop={(e) => handleDropOnAllDay(e, day)}
                                             className={`flex flex-col relative ${isDark ? 'divide-zinc-800 border-zinc-800' : 'divide-gray-100 border-gray-100'} ${isToday ? isDark ? 'bg-zinc-900/20' : 'bg-emerald-50/20' : ''}`}
@@ -637,9 +673,9 @@ export const CalendarBoard = ({
                                             {isAllDayExpanded && (
                                                 <div className={`p-1 min-h-[40px] space-y-1 border-b transition-colors ${isDark ? 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/60' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}>
                                                     {untimedTasks.map(t => (
-                                                        <AllDayTaskCard 
-                                                            key={t.id} 
-                                                            task={t} 
+                                                        <AllDayTaskCard
+                                                            key={t.id}
+                                                            task={t}
                                                             projects={projects}
                                                             isDark={isDark}
                                                             onDragStart={handleDragStart}
@@ -674,58 +710,58 @@ export const CalendarBoard = ({
                         </div>
 
                         {/* Grid Columns */}
-                        <div className="flex-1 grid grid-cols-5 divide-x min-w-0">
-                             {weekDays.map((day, i) => {
-                                 const dateStr = toLocalDateStr(day);
-                                 // Use allWeekTasks to include virtual tasks
-                                 const dayTasks = allWeekTasks.filter(t => t.dueDate === dateStr && !t.completed);
-                                 const timedTasks = dayTasks.filter(t => t.dueTime);
-                                 const isToday = isDueToday(dateStr);
-                                 
-                                 // Calculate layout for this specific day
-                                 const layouts = calculateDayLayouts(timedTasks);
-                                 
-                                 // Current Time Line Position
-                                 const currentHour = now.getHours();
-                                 const currentMinute = now.getMinutes();
-                                 const currentTimeTop = (currentHour * 60 + currentMinute) * (PIXELS_PER_HOUR / 60);
+                        <div className={`flex-1 grid ${viewType === 'week' ? 'grid-cols-5' : 'grid-cols-1'} divide-x min-w-0 ${viewType === 'day' ? "bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiM4MDgwODAiIGZpbGwtb3BhY2l0eT0iMC4yIi8+PC9zdmc+')]" : ''}`}>
+                            {weekDays.map((day, i) => {
+                                const dateStr = toLocalDateStr(day);
+                                // Use allWeekTasks to include virtual tasks
+                                const dayTasks = allWeekTasks.filter(t => t.dueDate === dateStr && !t.completed);
+                                const timedTasks = dayTasks.filter(t => t.dueTime);
+                                const isToday = isDueToday(dateStr);
 
-                                 return (
-                                     <div key={i} className={`flex flex-col relative ${isDark ? 'divide-zinc-800 border-zinc-800' : 'divide-gray-100 border-gray-100'} ${isToday ? isDark ? 'bg-zinc-900/10' : 'bg-emerald-50/10' : ''}`}>
-                                          <div 
-                                            className="relative w-full" 
+                                // Calculate layout for this specific day
+                                const layouts = calculateDayLayouts(timedTasks);
+
+                                // Current Time Line Position
+                                const currentHour = now.getHours();
+                                const currentMinute = now.getMinutes();
+                                const currentTimeTop = (currentHour * 60 + currentMinute) * (PIXELS_PER_HOUR / 60);
+
+                                return (
+                                    <div key={i} className={`flex flex-col relative ${isDark ? 'divide-zinc-800 border-zinc-800' : 'divide-gray-100 border-gray-100'} ${isToday ? isDark ? 'bg-zinc-900/10' : 'bg-emerald-50/10' : ''}`}>
+                                        <div
+                                            className="relative w-full"
                                             style={{ height: `${24 * PIXELS_PER_HOUR}px` }}
                                             onDragOver={handleDragOver}
                                             onDrop={(e) => handleDropOnDayGrid(e, day)}
-                                          >
-                                              {/* Current Time Indicator */}
-                                              {isToday && (
-                                                <div 
+                                        >
+                                            {/* Current Time Indicator */}
+                                            {isToday && (
+                                                <div
                                                     className="absolute w-full flex items-center z-20 pointer-events-none"
                                                     style={{ top: `${currentTimeTop}px` }}
                                                 >
                                                     <div className={`absolute -left-1.5 w-3 h-3 rounded-full bg-[#10B981] border-2 ${isDark ? 'border-[#09090b]' : 'border-white'}`} />
                                                     <div className="w-full h-[2px] bg-[#10B981]" />
                                                 </div>
-                                              )}
+                                            )}
 
-                                              {hours.map(h => (
-                                                  <div key={h} className={`absolute w-full border-t pointer-events-none ${isDark ? 'border-zinc-800/50' : 'border-gray-100'}`} style={{ top: h * PIXELS_PER_HOUR, height: PIXELS_PER_HOUR }}>
-                                                      <div className={`absolute w-full border-t border-dashed pointer-events-none ${isDark ? 'border-zinc-900' : 'border-gray-50'}`} style={{ top: '50%' }} />
-                                                  </div>
-                                              ))}
-                                              {timedTasks.map(t => {
-                                                  // NOTE: If resizing, override height locally for visual smoothness, 
-                                                  // but for drag optimization we just pass props.
-                                                  let effectiveTask = t;
-                                                  if (resizingTask === t.id && tempHeight !== null) {
-                                                      effectiveTask = { ...t, duration: Math.round((tempHeight / PIXELS_PER_HOUR) * 60) };
-                                                  }
-                                                  
-                                                  return (
-                                                    <TimeGridTask 
-                                                        key={t.id} 
-                                                        task={effectiveTask} 
+                                            {hours.map(h => (
+                                                <div key={h} className={`absolute w-full border-t pointer-events-none ${isDark ? 'border-zinc-800/50' : 'border-gray-100'}`} style={{ top: h * PIXELS_PER_HOUR, height: PIXELS_PER_HOUR }}>
+                                                    <div className={`absolute w-full border-t border-dashed pointer-events-none ${isDark ? 'border-zinc-900' : 'border-gray-50'}`} style={{ top: '50%' }} />
+                                                </div>
+                                            ))}
+                                            {timedTasks.map(t => {
+                                                // NOTE: If resizing, override height locally for visual smoothness, 
+                                                // but for drag optimization we just pass props.
+                                                let effectiveTask = t;
+                                                if (resizingTask === t.id && tempHeight !== null) {
+                                                    effectiveTask = { ...t, duration: Math.round((tempHeight / PIXELS_PER_HOUR) * 60) };
+                                                }
+
+                                                return (
+                                                    <TimeGridTask
+                                                        key={t.id}
+                                                        task={effectiveTask}
                                                         layout={layouts[t.id]}
                                                         projects={projects}
                                                         isDark={isDark}
@@ -735,12 +771,12 @@ export const CalendarBoard = ({
                                                         onDragStart={handleDragStart}
                                                         onResizeStart={handleResizeStart}
                                                     />
-                                                  );
-                                              })}
-                                          </div>
-                                     </div>
-                                 )
-                             })}
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )
+                            })}
                         </div>
                     </div>
                 </div>

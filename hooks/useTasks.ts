@@ -127,9 +127,8 @@ export const useTasks = (
         await updateDoc(doc(ref, taskId), updates);
     };
 
-    const handleKanbanQuickAdd = async (status: 'todo' | 'in_progress') => {
-        const title = prompt("Nueva tarea:");
-        if (!title) return;
+    const handleKanbanQuickAdd = async (status: 'todo' | 'in_progress', title: string) => {
+        if (!title || !title.trim()) return;
 
         let targetProjectId = activeProject.id;
         if (targetProjectId === HOME_VIEW.id) {
@@ -147,7 +146,8 @@ export const useTasks = (
             priority: 'medium',
             dueDate: '',
             noteContent: '',
-            recurrence: 'none'
+            recurrence: 'none',
+            parentTaskId: null
         });
     };
 
@@ -198,7 +198,8 @@ export const useTasks = (
             priority: 'medium',
             dueDate: selectedDateFilter || '',
             noteContent: '',
-            recurrence: 'none'
+            recurrence: 'none',
+            parentTaskId: null
         });
         return true; // Use this to clear Title in component
     };
@@ -221,6 +222,60 @@ export const useTasks = (
         e.target.reset();
     };
 
+    const handleToggleTracking = async (task: Task) => {
+        const ref = userId ? getCollectionRef('tasks') : collection(db, 'tasks');
+        const now = Date.now();
+
+        if (task.trackingStartedAt) {
+            // Stop tracking
+            const elapsedSeconds = Math.floor((now - task.trackingStartedAt) / 1000);
+            const newTimeSpent = (task.timeSpent || 0) + elapsedSeconds;
+
+            await updateDoc(doc(ref, task.id), {
+                trackingStartedAt: null,
+                timeSpent: newTimeSpent
+            });
+            if (editingTask?.id === task.id) {
+                setEditingTask(p => p ? { ...p, trackingStartedAt: null, timeSpent: newTimeSpent } : null);
+            }
+        } else {
+            // Start tracking
+            // First stop any other currently tracking tasks
+            const currentlyTracking = tasks.filter(t => t.trackingStartedAt);
+            for (const t of currentlyTracking) {
+                const elapsed = Math.floor((now - (t.trackingStartedAt || now)) / 1000);
+                const newTTime = (t.timeSpent || 0) + elapsed;
+                await updateDoc(doc(ref, t.id), {
+                    trackingStartedAt: null,
+                    timeSpent: newTTime
+                });
+                if (editingTask?.id === t.id) {
+                    setEditingTask(p => p ? { ...p, trackingStartedAt: null, timeSpent: newTTime } : null);
+                }
+            }
+
+            // Start this one
+            await updateDoc(doc(ref, task.id), {
+                trackingStartedAt: now
+            });
+            if (editingTask?.id === task.id) {
+                setEditingTask(p => p ? { ...p, trackingStartedAt: now } : null);
+            }
+        }
+    };
+
+    const handleResetTracking = async (taskId: string) => {
+        const ref = userId ? getCollectionRef('tasks') : collection(db, 'tasks');
+        await updateDoc(doc(ref, taskId), {
+            trackingStartedAt: null,
+            timeSpent: 0
+        });
+        if (editingTask?.id === taskId) {
+            setEditingTask(p => p ? { ...p, trackingStartedAt: null, timeSpent: 0 } : null);
+        }
+        setNotification({ type: 'success', message: 'Tiempo reiniciado a cero' });
+    };
+
     return {
         tasks,
         editingTask,
@@ -237,6 +292,8 @@ export const useTasks = (
         handleDeleteTask,
         handleToggleReview,
         handleQuickAddTask,
-        handleAddSubtask
+        handleAddSubtask,
+        handleToggleTracking,
+        handleResetTracking
     };
 };

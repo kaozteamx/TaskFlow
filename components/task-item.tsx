@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
     CheckCircle2, Circle, Flag, Repeat, ClipboardList, Edit2,
     Trash2, AlignLeft, Image as ImageIcon, ChevronRight,
-    ChevronDown, MoreVertical, Calendar, Clock
+    ChevronDown, MoreVertical, Calendar, Clock, Play, Square
 } from 'lucide-react';
 import { Task } from '../types';
 import { PRIORITIES } from '../utils';
@@ -21,6 +21,7 @@ interface TaskItemProps {
     subtasksCompletedCount?: number;
     subtasks?: Task[];
     depth?: number;
+    onToggleTracking?: (task: Task) => void;
 }
 
 export const TaskItem: React.FC<TaskItemProps> = ({
@@ -35,7 +36,8 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     subtasksCount = 0,
     subtasksCompletedCount = 0,
     subtasks = [],
-    depth = 0
+    depth = 0,
+    onToggleTracking
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -84,6 +86,33 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
     // Indentation for subtask hierarchy
     const paddingLeft = depth * 32;
+
+    const [liveSeconds, setLiveSeconds] = React.useState(task.timeSpent || 0);
+
+    React.useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (task.trackingStartedAt) {
+            interval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - task.trackingStartedAt!) / 1000);
+                setLiveSeconds((task.timeSpent || 0) + elapsed);
+            }, 1000);
+        } else {
+            setLiveSeconds(task.timeSpent || 0);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [task.trackingStartedAt, task.timeSpent]);
+
+    const formatTime = (totalSeconds: number) => {
+        if (!totalSeconds) return null;
+        const h = Math.floor(totalSeconds / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        const s = totalSeconds % 60;
+        if (h > 0) return `${h}h ${m}m`;
+        if (m > 0) return `${m}m ${s}s`;
+        return `${s}s`;
+    };
 
     return (
         <>
@@ -268,8 +297,27 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                     )}
                 </div>
 
-                {/* Actions Menu (appears on hover) */}
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Tracking Timer */}
+                {(task.timeSpent! > 0 || task.trackingStartedAt) && (
+                    <div className={`mr-2 font-mono text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1.5 transition-colors ${task.trackingStartedAt ? 'bg-emerald-500/10 text-emerald-500 font-bold' : isDark ? 'bg-zinc-800 text-zinc-500' : 'bg-gray-100 text-gray-500'}`}>
+                        {task.trackingStartedAt && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                        {formatTime(liveSeconds)}
+                    </div>
+                )}
+
+                {/* Actions Menu (appears on hover or when tracking) */}
+                <div className={`flex items-center gap-0.5 transition-opacity ${task.trackingStartedAt ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+
+                    {onToggleTracking && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onToggleTracking(task); }}
+                            className={`p-1.5 rounded-full transition-colors ${task.trackingStartedAt ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' : isDark ? 'hover:bg-zinc-800 text-emerald-500/80 hover:text-emerald-400' : 'hover:bg-gray-100 text-emerald-500 hover:text-emerald-600'}`}
+                            title={task.trackingStartedAt ? "Detener" : "Iniciar Timer"}
+                        >
+                            {task.trackingStartedAt ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" className="ml-0.5" />}
+                        </button>
+                    )}
+
                     <button
                         onClick={(e) => { e.stopPropagation(); onOpenChecklist(task); }}
                         className={`
@@ -320,6 +368,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                             onOpenChecklist={onOpenChecklist}
                             onToggleReview={onToggleReview}
                             depth={depth + 1}
+                            onToggleTracking={onToggleTracking}
                         />
                     ))}
                 </div>
