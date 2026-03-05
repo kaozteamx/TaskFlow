@@ -13,7 +13,7 @@ import {
 } from './utils';
 
 // --- Component Imports ---
-import { NotificationToast, MiniCalendar, PerformanceChart } from './components/ui-elements';
+import { NotificationToast, MiniCalendar, DailyQuoteWidget } from './components/ui-elements';
 import { ConfirmationModal, CloudSyncModal, PomodoroLogModal, ProjectModal, CalendarSubscribeModal } from './components/modals';
 import { TaskNoteModal } from './components/task-note-modal';
 import { CalendarBoard } from './components/calendar-board';
@@ -426,7 +426,7 @@ const App = () => {
                                     selectedDate={selectedDateFilter}
                                     onSelectDate={setSelectedDateFilter}
                                 />
-                                <PerformanceChart isDark={isDark} completionRate={completionRate} />
+                                <DailyQuoteWidget isDark={isDark} activeProjectId={activeProject.id} />
 
                                 {/* QUICK NOTES */}
                                 {activeProject.id !== HOME_VIEW.id && (

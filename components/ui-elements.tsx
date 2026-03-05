@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ChevronDown, Check, AlertTriangle, Info, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, Check, AlertTriangle, Info, X, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import { NotificationType, Task } from '../types';
 import { parseLocalDate } from '../utils';
 
@@ -34,7 +34,7 @@ export const CustomTimeSelect = ({ value, onChange, options, isDark, disabled, p
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 disabled={disabled}
                 className={`text-xs font-mono font-bold py-1.5 px-3 rounded-lg min-w-[70px] text-center transition-all flex items-center justify-between gap-2 border ${disabled ? 'opacity-40 cursor-not-allowed border-transparent' :
-                        isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200'
+                    isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200'
                     }`}
             >
                 <span>{value || placeholder || '--:--'}</span>
@@ -170,9 +170,34 @@ export const MiniCalendar = ({ isDark, tasks, selectedDate, onSelectDate }: any)
     );
 };
 
-export const PerformanceChart = ({ isDark, completionRate }: any) => (
-    <div className={`p-4 rounded-2xl border mt-4 mb-6 transition-colors duration-300 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200 shadow-sm'}`}>
-        <div className="flex items-center justify-between mb-3"><span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-gray-500'}`}>Rendimiento</span><span className="text-xl font-bold text-emerald-500">{completionRate}%</span></div>
-        <div className="h-16 flex items-end gap-1 px-1">{[30, 45, 35, 60, 50, 75, completionRate].map((h, i) => (<div key={i} className="flex-1 bg-transparent rounded-t-sm relative group h-full"><div className={`absolute bottom-0 w-full rounded-t-sm transition-all duration-1000 ${i === 6 ? 'bg-emerald-500' : isDark ? 'bg-zinc-800' : 'bg-gray-200'}`} style={{ height: `${Math.max(h, 5)}%` }} /></div>))}</div>
-    </div>
-);
+import { PRODUCTIVITY_QUOTES } from '../quotes';
+
+export const DailyQuoteWidget = ({ isDark, activeProjectId }: any) => {
+    const [quoteObj, setQuoteObj] = useState(PRODUCTIVITY_QUOTES[0]);
+
+    // Pick a new random quote whenever the active project changes or on mount
+    useEffect(() => {
+        const randomIndex = Math.floor(Math.random() * PRODUCTIVITY_QUOTES.length);
+        setQuoteObj(PRODUCTIVITY_QUOTES[randomIndex]);
+    }, [activeProjectId]);
+
+    return (
+        <div className={`p-5 rounded-2xl border mt-4 mb-6 transition-colors duration-300 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+            <div className="flex flex-col gap-3 relative">
+                <Quote
+                    size={24}
+                    className={`absolute -top-1 -left-1 opacity-20 ${isDark ? 'text-zinc-500' : 'text-gray-300'}`}
+                />
+                <p className={`text-sm italic font-medium leading-relaxed my-2 pl-4 border-l-2 ${isDark ? 'text-zinc-300 border-emerald-500/50' : 'text-gray-700 border-emerald-400'}`}>
+                    "{quoteObj.quote}"
+                </p>
+                <div className="flex items-center gap-2 justify-end mt-1">
+                    <span className={`w-4 h-[1px] ${isDark ? 'bg-zinc-600' : 'bg-gray-300'}`} />
+                    <span className={`text-[#10b981] font-bold text-xs tracking-wider uppercase`}>
+                        {quoteObj.author}
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
+};
