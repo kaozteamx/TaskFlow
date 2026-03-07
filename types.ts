@@ -31,6 +31,7 @@ export interface Task {
     completedAt?: Timestamp | FieldValue | Date | string;
     isExternal?: boolean; // New: For ICS events
     attachment?: string; // New: Base64 image string
+    taskType?: 'task' | 'meeting'; // New: Distinguishes tasks from meetings
 }
 
 export interface PomodoroLog {

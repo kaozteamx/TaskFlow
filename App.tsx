@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import {
     Plus, Loader2, Calendar as CalendarIcon,
     List, BarChart3, Search, FilterX, StickyNote, Flag, ExternalLink, Clock, LogOut, Layout,
-    AlertTriangle, Copy, Check, WifiOff, Link, ChevronUp, ChevronDown, ChevronRight, Kanban
+    AlertTriangle, Copy, Check, WifiOff, Link, ChevronUp, ChevronDown, ChevronRight, Kanban, Users
 } from 'lucide-react';
 
 // --- Imports from Refactored Modules ---
@@ -109,6 +109,10 @@ const App = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [quickTaskTitle, setQuickTaskTitle] = useState('');
     const [checklistModalTask, setChecklistModalTask] = useState<Task | null>(null);
+    const [showMeetings, setShowMeetings] = useState<boolean>(() => {
+        return localStorage.getItem('taskflow_showMeetings') === 'true';
+    });
+    useEffect(() => { localStorage.setItem('taskflow_showMeetings', showMeetings ? 'true' : 'false'); }, [showMeetings]);
     const detailsPanelRef = useRef<HTMLDivElement>(null);
 
     const handleFocusComplete = useCallback((minutes: number) => { setCompletedFocusMinutes(minutes); setPomodoroLogModalOpen(true); }, []);
@@ -171,6 +175,11 @@ const App = () => {
             filtered = filtered.filter(t => t.title.toLowerCase().includes(lowerQuery));
         }
 
+        // Hide meetings from list view unless showMeetings is true
+        if (viewMode === 'list' && !showMeetings) {
+            filtered = filtered.filter(t => t.taskType !== 'meeting');
+        }
+
         return filtered.sort((a, b) => {
             if (a.completed !== b.completed) return a.completed ? 1 : -1;
             if (sortBy === 'priority') {
@@ -190,7 +199,7 @@ const App = () => {
             }
             return 0;
         });
-    }, [allTasks, activeProject, sortBy, selectedDateFilter, searchQuery, viewMode, tasks]);
+    }, [allTasks, activeProject, sortBy, selectedDateFilter, searchQuery, viewMode, tasks, showMeetings]);
 
     const currentTaskSubtasks = useMemo(() => {
         if (!editingTask) return [];
@@ -476,6 +485,38 @@ const App = () => {
                                         <div className={`w-px h-3 mx-1 ${isDark ? 'bg-zinc-800' : 'bg-gray-200'}`} />
                                         <button onClick={() => setSortBy('created')} className={`p-1.5 rounded-md transition-all ${sortBy === 'created' ? (isDark ? 'bg-zinc-800 text-zinc-200' : 'bg-gray-100 text-gray-800') : (isDark ? 'text-zinc-600 hover:text-zinc-400' : 'text-gray-400 hover:text-gray-600')}`}><Clock size={14} /></button>
                                     </div>
+
+                                    {/* Meetings Toggle Button */}
+                                    {(() => {
+                                        const meetingsInScope = (() => {
+                                            let src = activeProject.id !== HOME_VIEW.id ? tasks : allTasks;
+                                            src = src.filter(t => !t.parentTaskId && t.taskType === 'meeting');
+                                            if (activeProject.id !== HOME_VIEW.id) src = src.filter(t => t.projectId === activeProject.id);
+                                            return src;
+                                        })();
+                                        if (meetingsInScope.length === 0) return null;
+                                        return (
+                                            <button
+                                                onClick={() => setShowMeetings(!showMeetings)}
+                                                title={showMeetings ? 'Ocultar reuniones' : 'Mostrar reuniones'}
+                                                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${showMeetings
+                                                        ? 'bg-violet-500/15 border-violet-500/30 text-violet-400 hover:bg-violet-500/25'
+                                                        : isDark
+                                                            ? 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
+                                                            : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:border-gray-300'
+                                                    }`}
+                                            >
+                                                <Users size={13} />
+                                                Reuniones
+                                                {!showMeetings && (
+                                                    <span className="ml-0.5 w-4 h-4 rounded-full bg-violet-500 text-white text-[9px] font-black flex items-center justify-center">
+                                                        {meetingsInScope.length}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        );
+                                    })()}
+
                                     {selectedDateFilter && (
                                         <button onClick={() => setSelectedDateFilter(null)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 text-xs font-bold hover:bg-emerald-500/20 transition-colors">
                                             <FilterX size={14} />

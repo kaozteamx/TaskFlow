@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
     CheckCircle2, Circle, Flag, Repeat, ClipboardList, Edit2,
     Trash2, AlignLeft, Image as ImageIcon, ChevronRight,
-    ChevronDown, MoreVertical, Calendar, Clock, Play, Square
+    ChevronDown, MoreVertical, Calendar, Clock, Play, Square, Users
 } from 'lucide-react';
 import { Task } from '../types';
 import { PRIORITIES } from '../utils';
@@ -267,6 +267,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                             {task.recurrence && task.recurrence !== 'none' && (
                                 <Repeat size={12} className={isDark ? 'text-blue-400' : 'text-blue-500'} />
                             )}
+
+                            {/* Meeting badge */}
+                            {task.taskType === 'meeting' && (
+                                <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-100 text-violet-600'}`}>
+                                    <Users size={10} /> Reunión
+                                </span>
+                            )}
+
 
                             {/* Attachment */}
                             {task.attachment && (

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, CheckCircle2, Circle, Flag, Calendar as CalendarIcon, Repeat, ClipboardList, Plus, Trash2, ArrowDownToLine, Image as ImageIcon, Upload, Play, Square, Timer, RefreshCcw } from 'lucide-react';
+import { X, CheckCircle2, Circle, Flag, Calendar as CalendarIcon, Repeat, ClipboardList, Plus, Trash2, ArrowDownToLine, Image as ImageIcon, Upload, Play, Square, Timer, RefreshCcw, Users, ListTodo } from 'lucide-react';
 import { Task } from '../types';
 import { PRIORITIES, TIME_SLOTS, RECURRENCE_OPTIONS, formatCreationDate, getEndTime, calculateDuration } from '../utils';
 import { CustomTimeSelect, CustomSelect } from './ui-elements';
@@ -108,7 +108,34 @@ export const DetailsPanel = ({
                 <>
                     <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-zinc-800' : 'border-gray-100'}`}>
                         <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Detalles</span>
-                        <button onClick={() => setEditingTask(null)} className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-zinc-800 text-zinc-400' : 'hover:bg-gray-100 text-gray-400'}`}><X size={18} /></button>
+                        <div className="flex items-center gap-2">
+                            {/* Task Type Toggle */}
+                            {!editingTask.isExternal && (
+                                <div className={`flex items-center p-0.5 rounded-lg border ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-gray-100 border-gray-200'}`}>
+                                    <button
+                                        onClick={() => handleUpdateTaskDetail('taskType', 'task')}
+                                        title="Tarea normal"
+                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${(editingTask.taskType || 'task') === 'task'
+                                                ? isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-500/15 text-emerald-600'
+                                                : isDark ? 'text-zinc-600 hover:text-zinc-400' : 'text-gray-400 hover:text-gray-600'
+                                            }`}
+                                    >
+                                        <ListTodo size={12} /> Tarea
+                                    </button>
+                                    <button
+                                        onClick={() => handleUpdateTaskDetail('taskType', 'meeting')}
+                                        title="Reunión (se oculta en la lista de pendientes)"
+                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${editingTask.taskType === 'meeting'
+                                                ? isDark ? 'bg-violet-500/20 text-violet-400' : 'bg-violet-500/15 text-violet-600'
+                                                : isDark ? 'text-zinc-600 hover:text-zinc-400' : 'text-gray-400 hover:text-gray-600'
+                                            }`}
+                                    >
+                                        <Users size={12} /> Reunión
+                                    </button>
+                                </div>
+                            )}
+                            <button onClick={() => setEditingTask(null)} className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-zinc-800 text-zinc-400' : 'hover:bg-gray-100 text-gray-400'}`}><X size={18} /></button>
+                        </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                         <div className="flex items-start gap-3 mb-6">

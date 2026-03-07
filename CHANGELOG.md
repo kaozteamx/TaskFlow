@@ -1,4 +1,28 @@
-# Registro de Desarrollo - TaskFlow (Última sesión: 05 Mar 2026)
+# Registro de Desarrollo - TaskFlow (Última sesión: 07 Mar 2026)
+
+### 🗓️ Sesión 07 Mar 2026 — Tipo "Reunión" + Toggle en Lista
+
+**Feature: Opción 5 — Tipo Reunión con ocultamiento en lista**
+
+1. **Nuevo campo `taskType` en la interfaz `Task`** (`types.ts`):
+   - Valores posibles: `'task'` (default, retrocompatible) | `'meeting'`
+   - Las tareas existentes sin este campo se comportan como `'task'` automáticamente.
+
+2. **Toggle Tarea / Reunión en el Panel de Detalles** (`details-panel.tsx`):
+   - En la cabecera del panel aparece un selector compacto con dos botones.
+   - Colores: verde esmeralda para "Tarea", violeta para "Reunión".
+   - Permite cambiar el tipo de cualquier tarea con un solo click.
+
+3. **Filtrado automático en la vista Lista** (`App.tsx`):
+   - Las reuniones se ocultan por defecto de la lista de pendientes.
+   - Estado `showMeetings` persistido en `localStorage`.
+   - Botón "Reuniones" aparece en la barra de filtros **solo cuando hay reuniones** en el proyecto activo, con badge violeta indicando cuántas están ocultas.
+   - El **Calendario** siempre muestra todas las tareas/reuniones sin excepción.
+
+4. **Badge visual de Reunión en TaskItem** (`task-item.tsx`):
+   - Cuando el toggle "Reuniones" está activo, cada tarea de tipo reunión muestra un badge violeta `👥 Reunión` al lado de los demás indicadores.
+
+---
 
 Este archivo sirve como bitácora y recordatorio automático para futuras sesiones con tu asistente IA (yo). En nuestra última sesión hiperproductiva implementamos lo siguiente:
 
