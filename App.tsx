@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import {
     Plus, Loader2, Calendar as CalendarIcon,
     List, BarChart3, Search, FilterX, StickyNote, Flag, ExternalLink, Clock, LogOut, Layout,
-    AlertTriangle, Copy, Check, WifiOff, Link, ChevronUp, ChevronDown, ChevronRight, Kanban, Users
+    AlertTriangle, Copy, Check, WifiOff, Link, ChevronUp, ChevronDown, ChevronRight, Kanban, Users, Brain
 } from 'lucide-react';
 
 // --- Imports from Refactored Modules ---
@@ -21,6 +21,7 @@ import { KanbanBoard } from './components/kanban-board';
 import { TaskItem } from './components/task-item';
 import { Sidebar } from './components/sidebar';
 import { DetailsPanel } from './components/details-panel';
+import { FocusBoard } from './components/focus-board';
 
 import { useAuth } from './hooks/useAuth';
 import { useProjects } from './hooks/useProjects';
@@ -34,9 +35,9 @@ const App = () => {
         const stored = localStorage.getItem('taskflow_theme');
         return stored ? stored === 'dark' : true;
     });
-    const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'board' | 'dashboard'>(() => {
+    const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'board' | 'dashboard' | 'focus'>(() => {
         const stored = localStorage.getItem('taskflow_viewMode');
-        return (stored as 'list' | 'calendar' | 'board' | 'dashboard') || 'list';
+        return (stored as 'list' | 'calendar' | 'board' | 'dashboard' | 'focus') || 'list';
     });
 
     useEffect(() => { localStorage.setItem('taskflow_theme', isDark ? 'dark' : 'light'); }, [isDark]);
@@ -72,6 +73,13 @@ const App = () => {
     useEffect(() => {
         setTasks(fetchedTasks);
     }, [fetchedTasks]);
+
+    // Generic field updater for FocusBoard (can update any field directly)
+    const handleUpdateTaskField = useCallback(async (taskId: string, fields: Partial<import('./types').Task>) => {
+        const { updateDoc, doc, db, collection } = await import('./firebase-setup');
+        const ref = userId ? getCollectionRef('tasks') : collection(db, 'tasks');
+        await updateDoc(doc(ref, taskId), fields as any);
+    }, [getCollectionRef, userId]);
 
     const { pomodoroLogs } = useDashboard(userId, getCollectionRef);
 
@@ -361,6 +369,16 @@ const App = () => {
                             >
                                 <BarChart3 size={14} /> Estadísticas
                             </button>
+                            <div className={`w-px h-3 mx-1 ${isDark ? 'bg-zinc-800' : 'bg-gray-200'}`} />
+                            <button
+                                onClick={() => setViewMode('focus')}
+                                className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-xs font-medium transition-all ${viewMode === 'focus'
+                                    ? 'bg-violet-500/20 text-violet-400 shadow-sm'
+                                    : isDark ? 'text-zinc-600 hover:text-violet-400' : 'text-gray-400 hover:text-violet-500'
+                                    }`}
+                            >
+                                <Brain size={14} /> Enfoque
+                            </button>
                         </div>
 
                         {/* User Profile / Logout */}
@@ -500,10 +518,10 @@ const App = () => {
                                                 onClick={() => setShowMeetings(!showMeetings)}
                                                 title={showMeetings ? 'Ocultar reuniones' : 'Mostrar reuniones'}
                                                 className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${showMeetings
-                                                        ? 'bg-violet-500/15 border-violet-500/30 text-violet-400 hover:bg-violet-500/25'
-                                                        : isDark
-                                                            ? 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
-                                                            : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:border-gray-300'
+                                                    ? 'bg-violet-500/15 border-violet-500/30 text-violet-400 hover:bg-violet-500/25'
+                                                    : isDark
+                                                        ? 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
+                                                        : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:border-gray-300'
                                                     }`}
                                             >
                                                 <Users size={13} />
@@ -621,6 +639,15 @@ const App = () => {
                         projects={projects}
                         pomodoroLogs={pomodoroLogs}
                         isDark={isDark}
+                    />
+                ) : viewMode === 'focus' ? (
+                    <FocusBoard
+                        tasks={tasks}
+                        projects={projects.filter(p => p.id !== HOME_VIEW.id)}
+                        isDark={isDark}
+                        onUpdateTaskField={handleUpdateTaskField}
+                        onToggleTask={handleToggleTask}
+                        onEditTask={setEditingTask}
                     />
                 ) : (
                     <CalendarBoard

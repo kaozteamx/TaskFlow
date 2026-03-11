@@ -32,6 +32,7 @@ export interface Task {
     isExternal?: boolean; // New: For ICS events
     attachment?: string; // New: Base64 image string
     taskType?: 'task' | 'meeting'; // New: Distinguishes tasks from meetings
+    isDayWin?: boolean; // New: Top 3 Victorias del Día (FocusBoard)
 }
 
 export interface PomodoroLog {
