@@ -59,7 +59,11 @@ const App = () => {
     const {
         projects, activeProject, setActiveProject, isProjectModalOpen, setIsProjectModalOpen,
         editingProject, projectName, setProjectName, projectLinks, setProjectLinks, projectColor, setProjectColor,
-        projectNotes, setProjectNotes, handleSaveNotes, openProjectModal, handleSaveProject, handleDeleteProject
+        projectNotes, setProjectNotes,        handleSaveNotes,
+        openProjectModal,
+        handleSaveProject,
+        handleDeleteProject,
+        handleReorderProjects
     } = useProjects(userId, getCollectionRef, setNotification, setConfirmModal, tasks);
 
     // Tasks (requires tasks state mapped to its internal if we don't refactor everything deeply, but let's use the hook)
@@ -324,14 +328,15 @@ const App = () => {
                 isImporting={isImporting}
                 isExportingCSV={isExportingCSV}
                 handleExportPomodoroCSV={handleExportPomodoroCSV}
-                isBackingUp={isBackingUp}
-                handleExportData={handleExportData}
-                fileInputRef={fileInputRef}
-                handleFileSelect={handleFileSelect}
-                onFocusComplete={handleFocusComplete}
-                onMoveTaskToProject={handleMoveTaskToProject}
-                onOpenCalendarSubscribe={() => setIsCalendarSubscribeModalOpen(true)}
-            />
+                    isBackingUp={isBackingUp}
+                    handleExportData={handleExportData}
+                    fileInputRef={fileInputRef}
+                    handleFileSelect={handleFileSelect}
+                    onFocusComplete={handleFocusComplete}
+                    onMoveTaskToProject={handleMoveTaskToProject}
+                    onOpenCalendarSubscribe={() => setIsCalendarSubscribeModalOpen(true)}
+                    handleReorderProjects={handleReorderProjects}
+                />
 
             {/* MAIN CONTENT AREA */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">

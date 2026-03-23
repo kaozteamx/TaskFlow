@@ -8,6 +8,7 @@ export interface Project {
     quickNotes?: string;
     color?: string; // 'emerald' | 'blue' | 'purple' | 'amber' | 'rose' | 'cyan' | 'indigo'
     createdAt?: Timestamp | FieldValue | Date | string;
+    order?: number; // Sorting order
 }
 
 export interface Task {

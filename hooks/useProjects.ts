@@ -31,6 +31,7 @@ export const useProjects = (
         const targetProjectsRef = userId ? getCollectionRef('projects') : collection(db, 'projects');
         const unsubProjects = onSnapshot(query(targetProjectsRef), (snap: any) => {
             const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id }));
+            list.sort((a: any, b: any) => (a.order || 0) - (b.order || 0)); // Sort by order
             setProjects([HOME_VIEW, ...list]);
             if (activeProject && activeProject.id !== HOME_VIEW.id) {
                 const updated = list.find((p: any) => p.id === activeProject.id);
@@ -91,7 +92,9 @@ export const useProjects = (
                 await updateDoc(doc(colRef, editingProject.id), { name: projectName, links: validLinks, color: projectColor });
                 setNotification({ type: 'success', message: 'Proyecto actualizado' });
             } else {
-                await addDoc(colRef, { name: projectName, links: validLinks, createdAt: serverTimestamp(), quickNotes: '', color: projectColor });
+                // Set the new project's order to be at the end of the list
+                const nextOrder = projects.length > 1 ? projects.length : 0;
+                await addDoc(colRef, { name: projectName, links: validLinks, createdAt: serverTimestamp(), quickNotes: '', color: projectColor, order: nextOrder });
                 setNotification({ type: 'success', message: 'Proyecto creado' });
             }
             setIsProjectModalOpen(false);
@@ -126,6 +129,28 @@ export const useProjects = (
         });
     };
 
+    const handleReorderProjects = async (draggedId: string, targetId: string) => {
+        const filteredList = projects.filter(p => p.id !== HOME_VIEW.id);
+        const oldIndex = filteredList.findIndex(p => p.id === draggedId);
+        const newIndex = filteredList.findIndex(p => p.id === targetId);
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const newList = [...filteredList];
+        const [removed] = newList.splice(oldIndex, 1);
+        newList.splice(newIndex, 0, removed);
+
+        // Optimistic UI update
+        setProjects([HOME_VIEW, ...newList]);
+
+        // Save to Firebase
+        const batch = writeBatch(db);
+        const colRef = userId ? getCollectionRef('projects') : collection(db, 'projects');
+        newList.forEach((p, idx) => {
+            batch.update(doc(colRef, p.id), { order: idx });
+        });
+        await batch.commit();
+    };
+
     return {
         projects,
         activeProject,
@@ -144,6 +169,7 @@ export const useProjects = (
         handleSaveNotes,
         openProjectModal,
         handleSaveProject,
-        handleDeleteProject
+        handleDeleteProject,
+        handleReorderProjects
     };
 };

@@ -31,6 +31,7 @@ interface SidebarProps {
     onFocusComplete: (minutes: number) => void;
     onMoveTaskToProject: (taskId: string, projectId: string) => void;
     onOpenCalendarSubscribe: () => void;
+    handleReorderProjects: (draggedId: string, targetId: string) => void;
 }
 
 export const Sidebar = ({
@@ -38,9 +39,10 @@ export const Sidebar = ({
     activeProject, setActiveProject, projects, isProjectsExpanded, setIsProjectsExpanded,
     openProjectModal, handleDeleteProject, setIsCloudSyncModalOpen,
     isImporting, isExportingCSV, handleExportPomodoroCSV, isBackingUp, handleExportData,
-    fileInputRef, handleFileSelect, onFocusComplete, onMoveTaskToProject, onOpenCalendarSubscribe
+    fileInputRef, handleFileSelect, onFocusComplete, onMoveTaskToProject, onOpenCalendarSubscribe, handleReorderProjects
 }: SidebarProps) => {
     const [dragOverProjectId, setDragOverProjectId] = useState<string | null>(null);
+    const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
     const [isNoisePlaying, setIsNoisePlaying] = useState(false);
     
     // Web Audio API refs
@@ -48,8 +50,15 @@ export const Sidebar = ({
     const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
     const gainNodeRef = useRef<GainNode | null>(null);
 
+    const handleDragStartProject = (e: React.DragEvent, projectId: string) => {
+        setDraggedProjectId(projectId);
+        e.dataTransfer.setData('projectId', projectId);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
     const handleDragOver = (e: React.DragEvent, projectId: string) => {
         e.preventDefault();
+        if (draggedProjectId === projectId) return; // Don't highlight if hovering over itself
         setDragOverProjectId(projectId);
     };
 
@@ -57,13 +66,26 @@ export const Sidebar = ({
         setDragOverProjectId(null);
     };
 
-    const handleDrop = (e: React.DragEvent, projectId: string) => {
+    const handleDrop = (e: React.DragEvent, targetProjectId: string) => {
         e.preventDefault();
         setDragOverProjectId(null);
+        
         const taskId = e.dataTransfer.getData('taskId');
         if (taskId) {
-            onMoveTaskToProject(taskId, projectId);
+            onMoveTaskToProject(taskId, targetProjectId);
+            return;
         }
+
+        const droppedProjectId = e.dataTransfer.getData('projectId');
+        if (droppedProjectId && droppedProjectId !== targetProjectId) {
+            handleReorderProjects(droppedProjectId, targetProjectId);
+        }
+        setDraggedProjectId(null);
+    };
+
+    const handleDragEndProject = () => {
+        setDraggedProjectId(null);
+        setDragOverProjectId(null);
     };
 
     // Clean up audio on unmount
@@ -215,10 +237,13 @@ export const Sidebar = ({
                                  return (
                                  <div 
                                     key={p.id} 
-                                    className="group relative"
+                                    className={`group relative ${draggedProjectId === p.id ? 'opacity-50' : ''}`}
+                                    draggable
+                                    onDragStart={(e) => handleDragStartProject(e, p.id)}
                                     onDragOver={(e) => handleDragOver(e, p.id)}
                                     onDragLeave={handleDragLeave}
                                     onDrop={(e) => handleDrop(e, p.id)}
+                                    onDragEnd={handleDragEndProject}
                                  >
                                      <button onClick={() => setActiveProject(p)} className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${isHovered ? 'bg-emerald-500/20 border border-emerald-500/50' : activeProject.id === p.id ? 'bg-emerald-600/10 text-emerald-500' : isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-200'}`}>
                                          {/* Use color dot instead of generic folder icon if collapsed, or just next to name */}
