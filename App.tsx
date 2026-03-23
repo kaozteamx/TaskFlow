@@ -29,6 +29,7 @@ import { useTasks } from './hooks/useTasks';
 import { useCloudSync } from './hooks/useCloudSync';
 import { useDashboard } from './hooks/useDashboard';
 import { DashboardBoard } from './components/dashboard-board';
+import { HomeDashboard } from './components/home-dashboard';
 
 const App = () => {
     const [isDark, setIsDark] = useState(() => {
@@ -407,6 +408,17 @@ const App = () => {
 
                 {/* CONTENT BODY */}
                 {viewMode === 'list' ? (
+                    activeProject.id === HOME_VIEW.id ? (
+                        <HomeDashboard 
+                            tasks={allTasks}
+                            projects={projects}
+                            pomodoroLogs={pomodoroLogs}
+                            isDark={isDark}
+                            userName={authUser?.displayName?.split(' ')[0] || 'Guerrero'}
+                            onEditTask={setEditingTask}
+                            onToggleTask={handleToggleTask}
+                        />
+                    ) : (
                     <div className="flex-1 flex overflow-hidden">
                         {/* LEFT PANEL (Project Details) */}
                         {activeProject ? (
@@ -624,7 +636,7 @@ const App = () => {
                             </div>
                         </div>
                     </div>
-                ) : viewMode === 'board' ? (
+                )) : viewMode === 'board' ? (
                     <KanbanBoard
                         tasks={activeRootTasks} // Uses same filtering as List view
                         projects={projects}
