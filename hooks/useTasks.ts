@@ -27,6 +27,14 @@ export const useTasks = (
             const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id }));
             setTasks(list);
             setLoading(false);
+        }, (error: any) => {
+            console.error("Firestore Error in useTasks:", error);
+            setLoading(false);
+            if (error.code === 'permission-denied') {
+                setNotification({ type: 'error', message: 'Error de permisos: Revisa las reglas de Firestore.' });
+            } else {
+                setNotification({ type: 'error', message: 'Error conectando a la base de datos.' });
+            }
         });
         return () => unsubTasks();
     }, [userId, getCollectionRef]);

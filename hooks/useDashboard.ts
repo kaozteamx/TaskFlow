@@ -17,6 +17,8 @@ export const useDashboard = (userId: string | null | undefined, getCollectionRef
                 ...d.data()
             })) : [];
             setPomodoroLogs(logs);
+        }, (error: any) => {
+             console.error("Firestore Error in useDashboard:", error);
         });
 
         return () => unsub();

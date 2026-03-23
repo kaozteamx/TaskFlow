@@ -37,6 +37,11 @@ export const useProjects = (
                 if (updated) setActiveProject(updated);
                 else setActiveProject(HOME_VIEW);
             }
+        }, (error: any) => {
+            console.error("Firestore Error in useProjects:", error);
+            if (error.code === 'permission-denied') {
+                setNotification({ type: 'error', message: 'No se pudieron cargar los proyectos. Revisa las reglas de Firestore.' });
+            }
         });
         return () => unsubProjects();
     }, [userId, getCollectionRef, activeProject?.id]);
