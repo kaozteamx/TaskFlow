@@ -119,9 +119,10 @@ const App = () => {
     const [quickTaskTitle, setQuickTaskTitle] = useState('');
     const [checklistModalTask, setChecklistModalTask] = useState<Task | null>(null);
     const [showMeetings, setShowMeetings] = useState<boolean>(() => {
-        return localStorage.getItem('taskflow_showMeetings') === 'true';
+        const stored = localStorage.getItem('taskflow_showMeetings_v2');
+        return stored !== 'false'; // Devuelve true por defecto a menos que lo oculten explícitamente
     });
-    useEffect(() => { localStorage.setItem('taskflow_showMeetings', showMeetings ? 'true' : 'false'); }, [showMeetings]);
+    useEffect(() => { localStorage.setItem('taskflow_showMeetings_v2', showMeetings ? 'true' : 'false'); }, [showMeetings]);
     const detailsPanelRef = useRef<HTMLDivElement>(null);
 
     const handleFocusComplete = useCallback((minutes: number) => { setCompletedFocusMinutes(minutes); setPomodoroLogModalOpen(true); }, []);
