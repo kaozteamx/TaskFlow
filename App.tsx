@@ -200,7 +200,15 @@ const App = () => {
                 const priorityScore: any = { high: 3, medium: 2, low: 1, none: 0 };
                 const scoreA = priorityScore[a.priority || 'none'] || 0;
                 const scoreB = priorityScore[b.priority || 'none'] || 0;
+                
+                // 1. Sort by Priority Score
                 if (scoreA !== scoreB) return scoreB - scoreA;
+                
+                // 2. Sort by Title Alphabetically (A-Z)
+                const titleCompare = a.title.localeCompare(b.title);
+                if (titleCompare !== 0) return titleCompare;
+                
+                // 3. Fallback to Date
                 const dateA = a.dueDate ? new Date(a.dueDate).getTime() : 9999999999999;
                 const dateB = b.dueDate ? new Date(b.dueDate).getTime() : 9999999999999;
                 return dateA - dateB;

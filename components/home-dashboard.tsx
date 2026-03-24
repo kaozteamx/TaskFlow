@@ -77,14 +77,26 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ tasks, projects, p
     }, [rootTasks, projects]);
 
     const todayTasks = rootTasks.filter(t => !t.completed && t.dueDate === todayStr).sort((a, b) => {
-        if (a.dueTime && b.dueTime) return a.dueTime.localeCompare(b.dueTime);
-        if (a.dueTime) return -1;
-        if (b.dueTime) return 1;
-        return 0; // sort by priority then
+        if (a.dueTime && b.dueTime) {
+            if (a.dueTime !== b.dueTime) return a.dueTime.localeCompare(b.dueTime);
+        } else if (a.dueTime) return -1;
+        else if (b.dueTime) return 1;
+        
+        // Fallback to priority
+        const priorityScore: any = { high: 3, medium: 2, low: 1, none: 0 };
+        const scoreA = priorityScore[a.priority || 'none'] || 0;
+        const scoreB = priorityScore[b.priority || 'none'] || 0;
+        if (scoreA !== scoreB) return scoreB - scoreA;
+
+        // Fallback to title
+        return a.title.localeCompare(b.title);
     });
 
     const upcomingTasks = rootTasks.filter(t => !t.completed && t.dueDate > todayStr && t.dueDate <= new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000).toISOString().slice(0,10))
-        .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+        .sort((a, b) => {
+            if (a.dueDate !== b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+            return a.title.localeCompare(b.title);
+        });
 
     const progressPercent = stats.dueToday > 0 ? Math.round((stats.completedToday / stats.dueToday) * 100) : 100;
 
