@@ -174,7 +174,7 @@ const App = () => {
         return [...tasks, ...externalEvents];
     }, [tasks, externalEvents]);
 
-    const activeRootTasks = useMemo(() => {
+    const calendarTasks = useMemo(() => {
         let sourceTasks = viewMode === 'list' && activeProject.id !== HOME_VIEW.id ? tasks : allTasks;
         let filtered = sourceTasks.filter(t => !t.parentTaskId);
 
@@ -182,18 +182,23 @@ const App = () => {
             filtered = filtered.filter(t => t.projectId === activeProject.id);
         }
 
-        if (selectedDateFilter) {
-            filtered = filtered.filter(t => t.dueDate === selectedDateFilter);
-        }
-
         if (searchQuery.trim()) {
             const lowerQuery = searchQuery.toLowerCase();
             filtered = filtered.filter(t => t.title.toLowerCase().includes(lowerQuery));
         }
 
-        // Hide meetings from list view unless showMeetings is true
         if (viewMode === 'list' && !showMeetings) {
             filtered = filtered.filter(t => t.taskType !== 'meeting');
+        }
+
+        return filtered;
+    }, [tasks, allTasks, activeProject.id, viewMode, showMeetings, searchQuery]);
+
+    const activeRootTasks = useMemo(() => {
+        let filtered = [...calendarTasks];
+
+        if (selectedDateFilter) {
+            filtered = filtered.filter(t => t.dueDate === selectedDateFilter);
         }
 
         return filtered.sort((a, b) => {
@@ -588,7 +593,7 @@ const App = () => {
 
                                 <MiniCalendar
                                     isDark={isDark}
-                                    tasks={activeProject.id === HOME_VIEW.id ? tasks : tasks.filter(t => t.projectId === activeProject.id)}
+                                    tasks={calendarTasks}
                                     selectedDate={selectedDateFilter}
                                     onSelectDate={setSelectedDateFilter}
                                 />
