@@ -541,7 +541,7 @@ const App = () => {
                 {viewMode === 'list' ? (
                     activeProject.id === HOME_VIEW.id ? (
                         <HomeDashboard 
-                            tasks={allTasks}
+                            tasks={calendarTasks}
                             projects={projects}
                             pomodoroLogs={pomodoroLogs}
                             isDark={isDark}
