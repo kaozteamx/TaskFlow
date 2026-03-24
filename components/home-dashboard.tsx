@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Task, Project, PomodoroLog } from '../types';
 import { safeDate } from '../utils';
 import { TaskItem } from './task-item';
-import { CheckCircle2, AlertCircle, Clock, Flame, Calendar, MapPin, Target, Sparkles, Brain, ArrowRight } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Clock, Flame, Calendar, MapPin, Target, Sparkles, Brain, ArrowRight, Printer } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 
 interface HomeDashboardProps {
@@ -13,11 +13,12 @@ interface HomeDashboardProps {
     userName: string;
     onEditTask: (task: Task) => void;
     onToggleTask: (task: Task) => void;
+    onOpenExportModal?: () => void;
 }
 
 const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#f43f5e', '#06b6d4', '#6366f1'];
 
-export const HomeDashboard: React.FC<HomeDashboardProps> = ({ tasks, projects, pomodoroLogs, isDark, userName, onEditTask, onToggleTask }) => {
+export const HomeDashboard: React.FC<HomeDashboardProps> = ({ tasks, projects, pomodoroLogs, isDark, userName, onEditTask, onToggleTask, onOpenExportModal }) => {
     
     // Calculate Today String
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -128,20 +129,27 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ tasks, projects, p
                         </p>
                     </div>
 
-                     {/* Main Progress Ring */}
-                     <div className="flex items-center gap-4 bg-black/10 dark:bg-black/20 p-4 rounded-2xl backdrop-blur-md">
-                        <div className="relative w-16 h-16 flex items-center justify-center">
-                            <svg className="w-16 h-16 transform -rotate-90">
-                                <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="6" fill="transparent" className={`${isDark ? 'text-zinc-800' : 'text-white/20'}`} />
-                                <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="175.9" strokeDashoffset={175.9 - (175.9 * Math.min(progressPercent, 100)) / 100} className={`text-emerald-500 transition-all duration-1000 ease-out`} strokeLinecap="round" />
-                            </svg>
-                            <span className="absolute text-sm font-bold">{progressPercent}%</span>
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold uppercase tracking-widest opacity-70">Progreso Hoy</p>
-                            <p className="text-sm font-medium">{stats.completedToday} de {stats.dueToday} completadas</p>
-                        </div>
-                    </div>
+                     {/* Main Progress Ring & Actions */}
+                     <div className="flex flex-col gap-3">
+                         <div className="flex items-center gap-4 bg-black/10 dark:bg-black/20 p-4 rounded-2xl backdrop-blur-md">
+                             <div className="relative w-16 h-16 flex items-center justify-center">
+                                 <svg className="w-16 h-16 transform -rotate-90">
+                                     <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="6" fill="transparent" className={`${isDark ? 'text-zinc-800' : 'text-white/20'}`} />
+                                     <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="175.9" strokeDashoffset={175.9 - (175.9 * Math.min(progressPercent, 100)) / 100} className={`text-emerald-500 transition-all duration-1000 ease-out`} strokeLinecap="round" />
+                                 </svg>
+                                 <span className="absolute text-sm font-bold">{progressPercent}%</span>
+                             </div>
+                             <div>
+                                 <p className="text-xs font-bold uppercase tracking-widest opacity-70">Progreso Hoy</p>
+                                 <p className="text-sm font-medium">{stats.completedToday} de {stats.dueToday} completadas</p>
+                             </div>
+                         </div>
+                         {onOpenExportModal && (
+                             <button onClick={onOpenExportModal} className="flex items-center justify-center gap-2 w-full py-2.5 bg-black/20 hover:bg-black/30 dark:bg-white/10 dark:hover:bg-white/20 transition-all rounded-xl text-xs font-bold backdrop-blur-md">
+                                 <Printer size={14} /> Exportar Todas las Tareas
+                             </button>
+                         )}
+                     </div>
                 </div>
             </div>
 

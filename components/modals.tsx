@@ -231,3 +231,71 @@ export const ProjectModal = ({ isOpen, onClose, isDark, editingProject, name, se
         </div>
     );
 };
+
+export const ExportTasksModal = ({ isOpen, onClose, projects, isDark, onExport }: any) => {
+    const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+    const [format, setFormat] = useState<'xlsx' | 'pdf'>('xlsx');
+
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedProjects(projects.filter((p: any) => p.id !== 'HOME').map((p: any) => p.id));
+        }
+    }, [isOpen, projects]);
+
+    if (!isOpen) return null;
+
+    const toggleProject = (id: string) => {
+        setSelectedProjects(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const handleExport = () => {
+        if (selectedProjects.length > 0) {
+            onExport(selectedProjects, format);
+            onClose();
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[250] flex items-center justify-center p-4 animate-in zoom-in-95">
+            <div className={`w-full max-w-sm rounded-xl border shadow-2xl p-6 flex flex-col max-h-[80vh] ${isDark ? 'bg-[#18181b] border-zinc-800' : 'bg-white border-gray-200'}`}>
+                <div className="flex justify-between items-center mb-5">
+                    <h3 className={`text-lg font-semibold ${isDark ? 'text-zinc-100' : 'text-gray-900'}`}>Exportar Tareas</h3>
+                    <button onClick={onClose} className={isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-gray-400 hover:text-gray-600'}><X size={20}/></button>
+                </div>
+                
+                <div className="mb-4">
+                    <label className={`block text-[10px] font-bold uppercase mb-2 ${isDark ? 'text-zinc-500' : 'text-gray-500'}`}>Formato</label>
+                    <div className="flex gap-2">
+                        <button onClick={() => setFormat('xlsx')} className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${format === 'xlsx' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-600 dark:text-emerald-400' : isDark ? 'border-zinc-700 text-zinc-400 hover:bg-zinc-800' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>Excel (XLSX)</button>
+                        <button onClick={() => setFormat('pdf')} className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${format === 'pdf' ? 'bg-red-500/10 border-red-500/50 text-red-600 dark:text-red-400' : isDark ? 'border-zinc-700 text-zinc-400 hover:bg-zinc-800' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>PDF</button>
+                    </div>
+                </div>
+
+                <label className={`block text-[10px] font-bold uppercase mb-2 ${isDark ? 'text-zinc-500' : 'text-gray-500'}`}>Proyectos a Incluir</label>
+                <div className="flex-1 overflow-y-auto mb-5 border rounded-lg p-2 space-y-1 custom-scrollbar bg-black/5 dark:bg-black/20 dark:border-zinc-800">
+                    {projects.filter((p: any) => p.id !== 'HOME').map((p: any) => (
+                        <label key={p.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors m-0">
+                            <input 
+                                type="checkbox" 
+                                checked={selectedProjects.includes(p.id)}
+                                onChange={() => toggleProject(p.id)}
+                                className="w-4 h-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <span className={`text-sm ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>{p.name}</span>
+                        </label>
+                    ))}
+                    {projects.filter((p: any) => p.id !== 'HOME').length === 0 && (
+                        <p className="text-xs text-center p-4 opacity-50">No hay proyectos creados</p>
+                    )}
+                </div>
+
+                <div className="flex gap-3 mt-auto">
+                    <button onClick={onClose} className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>Cancelar</button>
+                    <button onClick={handleExport} disabled={selectedProjects.length === 0} className={`flex-1 py-2.5 rounded-lg text-sm font-medium text-white transition-all ${selectedProjects.length === 0 ? 'bg-gray-400/50 text-gray-500 cursor-not-allowed' : isDark ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-emerald-500 hover:bg-emerald-600'}`}>
+                        Exportar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import {
     Plus, Loader2, Calendar as CalendarIcon,
     List, BarChart3, Search, FilterX, StickyNote, Flag, ExternalLink, Clock, LogOut, Layout,
-    AlertTriangle, Copy, Check, WifiOff, Link, ChevronUp, ChevronDown, ChevronRight, Kanban, Users, Brain
+    AlertTriangle, Copy, Check, WifiOff, Link, ChevronUp, ChevronDown, ChevronRight, Kanban, Users, Brain, Printer, FileSpreadsheet
 } from 'lucide-react';
 
 // --- Imports from Refactored Modules ---
@@ -14,7 +14,7 @@ import {
 
 // --- Component Imports ---
 import { NotificationToast, MiniCalendar, DailyQuoteWidget } from './components/ui-elements';
-import { ConfirmationModal, CloudSyncModal, PomodoroLogModal, ProjectModal, CalendarSubscribeModal } from './components/modals';
+import { ConfirmationModal, CloudSyncModal, PomodoroLogModal, ProjectModal, CalendarSubscribeModal, ExportTasksModal } from './components/modals';
 import { TaskNoteModal } from './components/task-note-modal';
 import { CalendarBoard } from './components/calendar-board';
 import { KanbanBoard } from './components/kanban-board';
@@ -22,6 +22,7 @@ import { TaskItem } from './components/task-item';
 import { Sidebar } from './components/sidebar';
 import { DetailsPanel } from './components/details-panel';
 import { FocusBoard } from './components/focus-board';
+import * as XLSX from 'xlsx';
 
 import { useAuth } from './hooks/useAuth';
 import { useProjects } from './hooks/useProjects';
@@ -113,6 +114,7 @@ const App = () => {
     const [externalEvents, setExternalEvents] = useState<Task[]>([]);
     const [isCalendarSubscribeModalOpen, setIsCalendarSubscribeModalOpen] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
     // List View States
     const [isResourcesExpanded, setIsResourcesExpanded] = useState(false);
@@ -230,6 +232,116 @@ const App = () => {
 
     const completionRate = activeRootTasks.length > 0 ? Math.round((activeRootTasks.filter(t => t.completed).length / activeRootTasks.length) * 100) : 0;
     const completedTasks = useMemo(() => activeRootTasks.filter(t => t.completed), [activeRootTasks]);
+
+    const executeExportTasks = (projectIds: string[], format: 'xlsx' | 'pdf') => {
+        const selectedTasks = tasks.filter(t => projectIds.includes(t.projectId) && !t.completed && !t.parentTaskId).sort((a,b) => {
+            const priorityScore: any = { high: 3, medium: 2, low: 1, none: 0 };
+            const scoreA = priorityScore[a.priority || 'none'] || 0;
+            const scoreB = priorityScore[b.priority || 'none'] || 0;
+            if (scoreA !== scoreB) return scoreB - scoreA;
+            const titleCompare = a.title.localeCompare(b.title);
+            if (titleCompare !== 0) return titleCompare;
+            return (a.dueDate || '9999').localeCompare(b.dueDate || '9999');
+        });
+
+        if (format === 'xlsx') {
+            const rows = selectedTasks.map(t => {
+                const priorityStr = t.priority === 'high' ? 'Alta' : t.priority === 'medium' ? 'Media' : 'Baja';
+                const proj = projects.find(p => p.id === t.projectId)?.name || 'Desconocido';
+                return {
+                    "Estado": t.completed ? 'Completado' : 'Pendiente',
+                    "Proyecto": proj,
+                    "Prioridad": priorityStr,
+                    "Tarea": t.title,
+                    "Descripción": t.description || '',
+                    "Notas": t.noteContent || '',
+                    "Fecha Vencimiento": t.dueDate ? formatDate(t.dueDate) : 'Sin fecha',
+                    "Hora": t.dueTime || 'Sin hora'
+                };
+            });
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            worksheet['!cols'] = [{ wch: 12 }, { wch: 20 }, { wch: 10 }, { wch: 40 }, { wch: 60 }, { wch: 40 }, { wch: 16 }, { wch: 10 }];
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Tareas Pendientes");
+            const fileName = projectIds.length === 1 ? `${projects.find(p => p.id === projectIds[0])?.name}_Tareas` : `Reporte_Global_Tareas`;
+            XLSX.writeFile(workbook, `${fileName}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            setNotification({ type: 'success', message: 'Reporte Excel (.xlsx) generado con éxito' });
+        } else if (format === 'pdf') {
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) return;
+            const isSingleProject = projectIds.length === 1;
+            const reportTitle = isSingleProject ? `Proyecto: ${projects.find(p=>p.id === projectIds[0])?.name}` : 'Reporte Global de Tareas';
+            const html = `
+                <html>
+                <head>
+                    <title>Reporte de Tareas - ${activeProject.name}</title>
+                    <style>
+                        body { font-family: system-ui, -apple-system, sans-serif; color: #333; padding: 40px; }
+                        h1 { color: #059669; margin-bottom: 5px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 30px; font-size: 14px; }
+                        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; vertical-align: top; }
+                        th { background-color: #f9fafb; font-weight: bold; }
+                        .completed { color: #059669; font-weight: bold; }
+                        .pending { color: #dc2626; font-weight: bold; }
+                        .priority-high { color: #dc2626; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+                        .priority-medium { color: #f59e0b; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+                        .priority-low { color: #3b82f6; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+                        @media print {
+                            body { padding: 0; }
+                            button { display: none; }
+                            @page { margin: 1.5cm; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>${reportTitle}</h1>
+                    <p style="margin-top:0; color:#666;"><strong>Fecha del reporte:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 15%">Estado</th>
+                                <th style="width: 40%">Tarea</th>
+                                <th style="width: 30%">Observaciones / Notas</th>
+                                <th style="width: 15%">Agendado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${selectedTasks.map(t => {
+                                const priorityClass = t.priority === 'high' ? 'priority-high' : t.priority === 'medium' ? 'priority-medium' : 'priority-low';
+                                const priorityLabel = t.priority === 'high' ? 'Alta' : t.priority === 'medium' ? 'Media' : 'Baja';
+                                const px = projects.find(p => p.id === t.projectId)?.name || '';
+                                return `
+                                <tr>
+                                    <td class="${t.completed ? 'completed' : 'pending'}">${t.completed ? '✔ Completado' : '⭕ Pendiente'}</td>
+                                    <td>
+                                        ${!isSingleProject ? `<div style="font-size:11px; color:#555; margin-bottom:2px; text-transform:uppercase;">${px}</div>` : ''}
+                                        <div style="margin-bottom:4px;"><strong>${t.title}</strong></div>
+                                        ${t.priority !== 'none' && t.priority ? `<span class="${priorityClass}">[Prioridad ${priorityLabel}]</span>` : ''}
+                                    </td>
+                                    <td>
+                                        ${t.description ? `<p style="margin:0 0 8px 0;">${t.description.replace(/\n/g, '<br/>')}</p>` : ''}
+                                        ${t.noteContent ? `<p style="margin:0;font-size:12px;color:#666;border-left:2px solid #ccc;padding-left:8px;"><em>${t.noteContent.replace(/\n/g, '<br/>')}</em></p>` : ''}
+                                    </td>
+                                    <td>
+                                        ${t.dueDate ? formatDate(t.dueDate) : '-'} <br/>
+                                        ${t.dueTime ? `<span style="color:#666;font-size:12px;">⏰ ${t.dueTime}</span>` : ''}
+                                    </td>
+                                </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                    <script>
+                        window.onload = () => { setTimeout(() => { window.print(); }, 200); };
+                    </script>
+                </body>
+                </html>
+            `;
+            printWindow.document.write(html);
+            printWindow.document.close();
+            setNotification({ type: 'success', message: 'Reporte de impresión generado' });
+        }
+    };
 
     if (authLoading) return (
         <div className={`flex items-center justify-center h-screen ${isDark ? 'bg-[#09090b] text-white' : 'bg-gray-50'}`}>
@@ -431,6 +543,7 @@ const App = () => {
                             userName={authUser?.displayName?.split(' ')[0] || 'Guerrero'}
                             onEditTask={setEditingTask}
                             onToggleTask={handleToggleTask}
+                            onOpenExportModal={() => setIsExportModalOpen(true)}
                         />
                     ) : (
                     <div className="flex-1 flex overflow-hidden">
@@ -512,6 +625,28 @@ const App = () => {
 
                                 {/* Filters */}
                                 <div className="flex items-center gap-2">
+                                    {/* Export Buttons */}
+                                    {activeProject.id === HOME_VIEW.id ? (
+                                        <div className={`flex items-center p-1 rounded-lg border ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'}`}>
+                                            <button onClick={() => setIsExportModalOpen(true)} title="Exportar Tareas de Inicio" className={`p-1.5 flex items-center gap-1.5 rounded-md transition-all ${isDark ? 'text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800' : 'text-gray-500 hover:text-emerald-600 hover:bg-gray-100'}`}>
+                                                <Printer size={15} />
+                                                <span className="text-[10px] font-bold uppercase hidden sm:block">Exportar</span>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className={`flex items-center p-1 rounded-lg border ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'}`}>
+                                            <button onClick={() => executeExportTasks([activeProject.id], 'xlsx')} title="Exportar Tareas a Excel (XLSX)" className={`p-1.5 flex items-center gap-1.5 rounded-md transition-all ${isDark ? 'text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800' : 'text-gray-500 hover:text-emerald-600 hover:bg-gray-100'}`}>
+                                                <FileSpreadsheet size={15} />
+                                                <span className="text-[10px] font-bold uppercase hidden sm:block">Excel</span>
+                                            </button>
+                                            <div className={`w-px h-3 mx-1 ${isDark ? 'bg-zinc-800' : 'bg-gray-200'}`} />
+                                            <button onClick={() => executeExportTasks([activeProject.id], 'pdf')} title="Guardar como PDF / Imprimir" className={`p-1.5 flex items-center gap-1.5 rounded-md transition-all ${isDark ? 'text-zinc-400 hover:text-red-400 hover:bg-zinc-800' : 'text-gray-500 hover:text-red-600 hover:bg-gray-100'}`}>
+                                                <Printer size={15} />
+                                                <span className="text-[10px] font-bold uppercase hidden sm:block">PDF</span>
+                                            </button>
+                                        </div>
+                                    )}
+
                                     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all focus-within:border-emerald-500 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'}`}>
                                         <Search size={16} className={isDark ? 'text-zinc-500' : 'text-gray-400'} />
                                         <input
@@ -710,6 +845,7 @@ const App = () => {
             <TaskNoteModal isOpen={!!checklistModalTask} onClose={() => setChecklistModalTask(null)} task={checklistModalTask} onUpdateNote={handleUpdateNote} isDark={isDark} />
             <ProjectModal isOpen={isProjectModalOpen} onClose={() => setIsProjectModalOpen(false)} isDark={isDark} editingProject={editingProject} name={projectName} setName={setProjectName} links={projectLinks} setLinks={setProjectLinks} color={projectColor} setColor={setProjectColor} onSave={handleSaveProject} />
             <CalendarSubscribeModal isOpen={isCalendarSubscribeModalOpen} onClose={() => setIsCalendarSubscribeModalOpen(false)} isDark={isDark} onSubscribe={handleSubscribeCalendar} />
+            <ExportTasksModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} projects={projects} isDark={isDark} onExport={executeExportTasks} />
         </div>
     );
 };
