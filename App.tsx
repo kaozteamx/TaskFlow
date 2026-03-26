@@ -625,7 +625,9 @@ const App = () => {
                                     <h2 className={`text-lg font-semibold ${isDark ? 'text-zinc-200' : 'text-gray-800'}`}>
                                         {selectedDateFilter ? `Tareas del ${formatDate(selectedDateFilter)}` : 'Todas las Tareas'}
                                     </h2>
-                                    <span className={`text-sm ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>{activeRootTasks.length} tareas encontradas</span>
+                                    <span className={`text-sm font-medium ${isDark ? 'text-emerald-500/80' : 'text-emerald-600/80'}`}>
+                                        {activeRootTasks.filter(t => !t.completed).length} tareas pendientes
+                                    </span>
                                 </div>
 
                                 {/* Filters */}

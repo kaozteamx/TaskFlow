@@ -103,56 +103,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ tasks, projects, p
 
     return (
         <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar p-6 lg:p-10 space-y-8 pb-24">
-            {/* Header / Greeting */}
-            <div className={`p-8 animate-in fade-in slide-in-from-top-4 duration-500 rounded-3xl relative overflow-hidden ${isDark ? 'bg-zinc-900 border border-zinc-800 shadow-xl' : 'bg-gradient-to-br from-emerald-500 to-teal-700 shadow-2xl text-white'}`}>
-                {/* Decorative BG element */}
-                <div className="absolute right-0 top-0 opacity-10 pointer-events-none transform translate-x-10 -translate-y-10 scale-150">
-                    <Sparkles size={180} />
+            {/* Actions Bar */}
+            {onOpenExportModal && (
+                <div className="flex justify-end mb-4 animate-in fade-in slide-in-from-top-4 duration-500 delay-75">
+                    <button 
+                        onClick={onOpenExportModal} 
+                        className={`flex items-center justify-center gap-2 px-5 py-2.5 transition-all rounded-xl text-sm font-bold shadow-sm border ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-white' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200'}`}
+                    >
+                        <Printer size={16} /> Exportar Todas las Tareas
+                    </button>
                 </div>
-                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                    <div>
-                        <h1 className="text-3xl font-extrabold mb-2 tracking-tight">
-                            {isDark ? (
-                                <>
-                                    <span className="text-zinc-100">¡Hagámoslo, </span>
-                                    <span className="text-emerald-400">{userName}</span>
-                                    <span className="text-zinc-100">!</span>
-                                </>
-                            ) : (
-                                <span>¡Es hora de brillar, {userName}!</span>
-                            )}
-                        </h1>
-                        <p className={`text-sm md:text-base font-medium ${isDark ? 'text-zinc-400' : 'text-emerald-50'}`}>
-                            Tu centro de comando. {stats.dueToday > 0 
-                                ? `Hoy tienes ${stats.dueToday} tareas críticas en tu radar.` 
-                                : 'Tu día está despejado por el momento.'}
-                        </p>
-                    </div>
-
-                     {/* Main Progress Ring & Actions */}
-                     <div className="flex flex-col gap-3">
-                         <div className="flex items-center gap-4 bg-black/10 dark:bg-black/20 p-4 rounded-2xl backdrop-blur-md">
-                             <div className="relative w-16 h-16 flex items-center justify-center">
-                                 <svg className="w-16 h-16 transform -rotate-90">
-                                     <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="6" fill="transparent" className={`${isDark ? 'text-zinc-800' : 'text-white/20'}`} />
-                                     <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="175.9" strokeDashoffset={175.9 - (175.9 * Math.min(progressPercent, 100)) / 100} className={`text-emerald-500 transition-all duration-1000 ease-out`} strokeLinecap="round" />
-                                 </svg>
-                                 <span className="absolute text-sm font-bold">{progressPercent}%</span>
-                             </div>
-                             <div>
-                                 <p className="text-xs font-bold uppercase tracking-widest opacity-70">Progreso Hoy</p>
-                                 <p className="text-sm font-medium">{stats.completedToday} de {stats.dueToday} completadas</p>
-                             </div>
-                         </div>
-                         {onOpenExportModal && (
-                             <button onClick={onOpenExportModal} className="flex items-center justify-center gap-2 w-full py-2.5 bg-black/20 hover:bg-black/30 dark:bg-white/10 dark:hover:bg-white/20 transition-all rounded-xl text-xs font-bold backdrop-blur-md">
-                                 <Printer size={14} /> Exportar Todas las Tareas
-                             </button>
-                         )}
-                     </div>
-                </div>
-            </div>
-
+            )}
             {/* Top Stat Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
                 <div className={`p-5 rounded-2xl border transition-all hover:scale-105 duration-200 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100 shadow-sm'}`}>
