@@ -92,18 +92,18 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ tasks, projects, p
         if (scoreA !== scoreB) return scoreB - scoreA;
 
         // Fallback to title
-        return a.title.localeCompare(b.title);
+        return (a.title || '').localeCompare(b.title || '');
     });
 
     const upcomingTasks = rootTasks.filter(t => !t.completed && t.dueDate > todayStr && t.dueDate <= new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000).toISOString().slice(0,10))
         .sort((a, b) => {
-            if (a.dueDate !== b.dueDate) return a.dueDate.localeCompare(b.dueDate);
-            return a.title.localeCompare(b.title);
+            if (a.dueDate !== b.dueDate) return (a.dueDate || '').localeCompare(b.dueDate || '');
+            return (a.title || '').localeCompare(b.title || '');
         });
 
     const overdueTasks = useMemo(() => {
         return rootTasks.filter(t => !t.completed && t.dueDate && t.dueDate < todayStr)
-            .sort((a, b) => a.dueDate!.localeCompare(b.dueDate!));
+            .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
     }, [rootTasks, todayStr]);
 
     const highPriorityTasks = useMemo(() => {
@@ -119,7 +119,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ tasks, projects, p
 
     const completedTodayTasks = useMemo(() => {
         return rootTasks.filter(t => t.completed && t.completedAt && safeDate(t.completedAt) && safeDate(t.completedAt)! >= todayDate)
-            .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
+            .sort((a, b) => {
+                const timeA = safeDate(a.completedAt)?.getTime() || 0;
+                const timeB = safeDate(b.completedAt)?.getTime() || 0;
+                return timeB - timeA;
+            });
     }, [rootTasks, todayDate]);
 
     const progressPercent = stats.dueToday > 0 ? Math.round((stats.completedToday / stats.dueToday) * 100) : 100;
