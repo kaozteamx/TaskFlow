@@ -1,4 +1,25 @@
-# Registro de Desarrollo - TaskFlow (Última sesión: 07 Mar 2026)
+# Registro de Desarrollo - TaskFlow
+
+### 🗓️ Sesión 08 May 2026 — Dashboard Interactivo y Bugfixes
+
+**Feature: Tarjetas Estadísticas del Dashboard como Filtros Dinámicos**
+1. **Interactividad en Tarjetas** (`home-dashboard.tsx`):
+   - Las tarjetas superiores del panel de inicio ("Atrasadas", "Prioridad Alta", "Enfoque Hoy", "Victorias Hoy") ahora funcionan como botones.
+   - Poseen diseño activo (borde de color) y hover interactions.
+2. **Listados Dinámicos**:
+   - Al seleccionar una tarjeta, el panel central cambia de "Tu Foco de Hoy" a la vista correspondiente.
+   - *Atrasadas*: Tareas con fecha de término vencida.
+   - *Prioridad Alta*: Tareas marcadas como prioridad alta o "do_first".
+   - *Victorias Hoy*: Tareas completadas durante el día en curso, ordenadas de más recientes a más antiguas.
+   - *Enfoque Hoy*: Restablece el dashboard a la vista general predeterminada.
+
+**Bugfix: Pantalla blanca al editar fechas de tareas**
+1. **Comparación segura de Strings** (`home-dashboard.tsx`):
+   - Se añadió una protección a los métodos `.localeCompare()` para prevenir crashes si un campo de texto o fecha (`dueDate`, `title`) llega como `null` o `undefined` durante el ciclo de renderizado.
+2. **Compatibilidad con Firestore Timestamps**:
+   - El ordenamiento de "Victorias de Hoy" se refactorizó para usar `.getTime()` en vez de comparaciones de texto, evitando que la aplicación se congele al intentar aplicar `.localeCompare()` sobre un objeto Firebase Timestamp.
+
+---
 
 ### 🗓️ Sesión 07 Mar 2026 — Tipo "Reunión" + Toggle en Lista
 
