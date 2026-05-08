@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Task, Project, PomodoroLog } from '../types';
 import { safeDate } from '../utils';
 import { TaskItem } from './task-item';
@@ -24,6 +24,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ tasks, projects, p
     const todayStr = new Date().toISOString().slice(0, 10);
     const now = new Date();
     const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [activeView, setActiveView] = useState<'focus' | 'overdue' | 'highPriority' | 'completedToday'>('focus');
 
     const rootTasks = tasks.filter(t => !t.parentTaskId);
 
@@ -99,6 +101,27 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ tasks, projects, p
             return a.title.localeCompare(b.title);
         });
 
+    const overdueTasks = useMemo(() => {
+        return rootTasks.filter(t => !t.completed && t.dueDate && t.dueDate < todayStr)
+            .sort((a, b) => a.dueDate!.localeCompare(b.dueDate!));
+    }, [rootTasks, todayStr]);
+
+    const highPriorityTasks = useMemo(() => {
+        return rootTasks.filter(t => !t.completed && (t.priority === 'high' || t.priority === 'do_first'))
+            .sort((a, b) => {
+                const priorityScore: any = { high: 3, do_first: 3, medium: 2, low: 1, none: 0 };
+                const scoreA = priorityScore[a.priority || 'none'] || 0;
+                const scoreB = priorityScore[b.priority || 'none'] || 0;
+                if (scoreA !== scoreB) return scoreB - scoreA;
+                return (a.dueDate || '9999').localeCompare(b.dueDate || '9999');
+            });
+    }, [rootTasks]);
+
+    const completedTodayTasks = useMemo(() => {
+        return rootTasks.filter(t => t.completed && t.completedAt && safeDate(t.completedAt) && safeDate(t.completedAt)! >= todayDate)
+            .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
+    }, [rootTasks, todayDate]);
+
     const progressPercent = stats.dueToday > 0 ? Math.round((stats.completedToday / stats.dueToday) * 100) : 100;
 
     return (
@@ -116,21 +139,30 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ tasks, projects, p
             )}
             {/* Top Stat Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-                <div className={`p-5 rounded-2xl border transition-all hover:scale-105 duration-200 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100 shadow-sm'}`}>
+                <button 
+                    onClick={() => setActiveView('overdue')}
+                    className={`p-5 rounded-2xl border transition-all text-left ${activeView === 'overdue' ? 'ring-2 ring-red-500 scale-[1.02]' : 'hover:scale-105'} duration-200 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100 shadow-sm'}`}
+                >
                     <div className="flex items-center justify-between mb-2">
                         <div className="p-2 rounded-xl bg-red-500/10 text-red-500"><AlertCircle size={20} /></div>
                         <span className="text-2xl font-black text-red-500">{stats.overdue}</span>
                     </div>
                     <p className={`text-sm font-bold ${isDark ? 'text-zinc-400' : 'text-gray-600'}`}>Atrasadas</p>
-                </div>
-                <div className={`p-5 rounded-2xl border transition-all hover:scale-105 duration-200 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100 shadow-sm'}`}>
+                </button>
+                <button 
+                    onClick={() => setActiveView('highPriority')}
+                    className={`p-5 rounded-2xl border transition-all text-left ${activeView === 'highPriority' ? 'ring-2 ring-orange-500 scale-[1.02]' : 'hover:scale-105'} duration-200 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100 shadow-sm'}`}
+                >
                     <div className="flex items-center justify-between mb-2">
                         <div className="p-2 rounded-xl bg-orange-500/10 text-orange-500"><Flame size={20} /></div>
                         <span className="text-2xl font-black text-orange-500">{stats.pHigh}</span>
                     </div>
                     <p className={`text-sm font-bold ${isDark ? 'text-zinc-400' : 'text-gray-600'}`}>Prioridad Alta</p>
-                </div>
-                <div className={`p-5 rounded-2xl border transition-all hover:scale-105 duration-200 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100 shadow-sm'}`}>
+                </button>
+                <button 
+                    onClick={() => setActiveView('focus')}
+                    className={`p-5 rounded-2xl border transition-all text-left ${activeView === 'focus' ? 'ring-2 ring-violet-500 scale-[1.02]' : 'hover:scale-105'} duration-200 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100 shadow-sm'}`}
+                >
                     <div className="flex items-center justify-between mb-2">
                         <div className="p-2 rounded-xl bg-violet-500/10 text-violet-500"><Brain size={20} /></div>
                         <div className="text-right">
@@ -139,73 +171,173 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ tasks, projects, p
                         </div>
                     </div>
                     <p className={`text-sm font-bold ${isDark ? 'text-zinc-400' : 'text-gray-600'}`}>Enfoque Hoy</p>
-                </div>
-                <div className={`p-5 rounded-2xl border transition-all hover:scale-105 duration-200 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100 shadow-sm'}`}>
+                </button>
+                <button 
+                    onClick={() => setActiveView('completedToday')}
+                    className={`p-5 rounded-2xl border transition-all text-left ${activeView === 'completedToday' ? 'ring-2 ring-emerald-500 scale-[1.02]' : 'hover:scale-105'} duration-200 ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100 shadow-sm'}`}
+                >
                     <div className="flex items-center justify-between mb-2">
                         <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500"><CheckCircle2 size={20} /></div>
                         <span className="text-2xl font-black text-emerald-500">{stats.completedToday}</span>
                     </div>
                     <p className={`text-sm font-bold ${isDark ? 'text-zinc-400' : 'text-gray-600'}`}>Victorias Hoy</p>
-                </div>
+                </button>
             </div>
 
             {/* Split Views */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-700">
-                {/* Center / Left Panel: My Today Focus */}
+                {/* Center / Left Panel: My Today Focus or Dynamic View */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-bold flex items-center gap-2">
-                            <Target className="text-emerald-500" />
-                            Tu Foco de Hoy
-                        </h2>
-                    </div>
-
-                    <div className="space-y-2">
-                        {todayTasks.length === 0 ? (
-                            <div className={`p-10 text-center rounded-2xl border border-dashed ${isDark ? 'bg-zinc-900/50 border-zinc-800 text-zinc-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
-                                <Sparkles size={32} className="mx-auto mb-3 opacity-50 text-emerald-500" />
-                                <p className="font-semibold">¡Nada programado para hoy!</p>
-                                <p className="text-sm">Tómate un respiro o planea adelante.</p>
+                    {activeView === 'focus' && (
+                        <>
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-bold flex items-center gap-2">
+                                    <Target className="text-emerald-500" />
+                                    Tu Foco de Hoy
+                                </h2>
                             </div>
-                        ) : (
-                            todayTasks.map(t => (
-                                <TaskItem 
-                                    key={t.id} 
-                                    task={t} 
-                                    onToggle={onToggleTask} 
-                                    onClick={onEditTask} 
-                                    isDark={isDark} 
-                                    showProjectName={projects.find(p => p.id === t.projectId)?.name || 'Inbox'}
-                                />
-                            ))
-                        )}
-                    </div>
 
-                    <h2 className="text-lg font-bold flex items-center gap-2 mt-10 mb-4">
-                        <Calendar className="text-blue-500" />
-                        Próximos días
-                    </h2>
-                    <div className="space-y-2">
-                        {upcomingTasks.length === 0 ? (
-                            <div className="p-6 text-center opacity-50 text-sm">No tienes eventos cercanos programados.</div>
-                        ) : (
-                            upcomingTasks.slice(0, 5).map(t => (
-                                <TaskItem 
-                                    key={t.id} 
-                                    task={t} 
-                                    onToggle={onToggleTask} 
-                                    onClick={onEditTask} 
-                                    isDark={isDark} 
-                                    showProjectName={projects.find(p => p.id === t.projectId)?.name || 'Inbox'}
-                                />
-                            ))
-                        )}
-                        {upcomingTasks.length > 5 && (
-                             <div className="text-center pt-2">
-                                <span className="text-xs font-bold opacity-50 uppercase tracking-widest">+ {upcomingTasks.length - 5} tareas más...</span>
-                             </div>
-                        )}
-                    </div>
+                            <div className="space-y-2">
+                                {todayTasks.length === 0 ? (
+                                    <div className={`p-10 text-center rounded-2xl border border-dashed ${isDark ? 'bg-zinc-900/50 border-zinc-800 text-zinc-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                                        <Sparkles size={32} className="mx-auto mb-3 opacity-50 text-emerald-500" />
+                                        <p className="font-semibold">¡Nada programado para hoy!</p>
+                                        <p className="text-sm">Tómate un respiro o planea adelante.</p>
+                                    </div>
+                                ) : (
+                                    todayTasks.map(t => (
+                                        <TaskItem 
+                                            key={t.id} 
+                                            task={t} 
+                                            onToggle={onToggleTask} 
+                                            onClick={onEditTask} 
+                                            isDark={isDark} 
+                                            showProjectName={projects.find(p => p.id === t.projectId)?.name || 'Inbox'}
+                                        />
+                                    ))
+                                )}
+                            </div>
+
+                            <h2 className="text-lg font-bold flex items-center gap-2 mt-10 mb-4">
+                                <Calendar className="text-blue-500" />
+                                Próximos días
+                            </h2>
+                            <div className="space-y-2">
+                                {upcomingTasks.length === 0 ? (
+                                    <div className="p-6 text-center opacity-50 text-sm">No tienes eventos cercanos programados.</div>
+                                ) : (
+                                    upcomingTasks.slice(0, 5).map(t => (
+                                        <TaskItem 
+                                            key={t.id} 
+                                            task={t} 
+                                            onToggle={onToggleTask} 
+                                            onClick={onEditTask} 
+                                            isDark={isDark} 
+                                            showProjectName={projects.find(p => p.id === t.projectId)?.name || 'Inbox'}
+                                        />
+                                    ))
+                                )}
+                                {upcomingTasks.length > 5 && (
+                                     <div className="text-center pt-2">
+                                        <span className="text-xs font-bold opacity-50 uppercase tracking-widest">+ {upcomingTasks.length - 5} tareas más...</span>
+                                     </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+
+                    {activeView === 'overdue' && (
+                        <>
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-bold flex items-center gap-2">
+                                    <AlertCircle className="text-red-500" />
+                                    Tareas Atrasadas
+                                </h2>
+                            </div>
+                            <div className="space-y-2">
+                                {overdueTasks.length === 0 ? (
+                                    <div className={`p-10 text-center rounded-2xl border border-dashed ${isDark ? 'bg-zinc-900/50 border-zinc-800 text-zinc-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                                        <Sparkles size={32} className="mx-auto mb-3 opacity-50 text-emerald-500" />
+                                        <p className="font-semibold">¡Todo al día!</p>
+                                        <p className="text-sm">No tienes tareas atrasadas.</p>
+                                    </div>
+                                ) : (
+                                    overdueTasks.map(t => (
+                                        <TaskItem 
+                                            key={t.id} 
+                                            task={t} 
+                                            onToggle={onToggleTask} 
+                                            onClick={onEditTask} 
+                                            isDark={isDark} 
+                                            showProjectName={projects.find(p => p.id === t.projectId)?.name || 'Inbox'}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        </>
+                    )}
+
+                    {activeView === 'highPriority' && (
+                        <>
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-bold flex items-center gap-2">
+                                    <Flame className="text-orange-500" />
+                                    Prioridad Alta
+                                </h2>
+                            </div>
+                            <div className="space-y-2">
+                                {highPriorityTasks.length === 0 ? (
+                                    <div className={`p-10 text-center rounded-2xl border border-dashed ${isDark ? 'bg-zinc-900/50 border-zinc-800 text-zinc-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                                        <Sparkles size={32} className="mx-auto mb-3 opacity-50 text-emerald-500" />
+                                        <p className="font-semibold">¡Sin prioridades críticas!</p>
+                                        <p className="text-sm">No tienes tareas de prioridad alta pendientes.</p>
+                                    </div>
+                                ) : (
+                                    highPriorityTasks.map(t => (
+                                        <TaskItem 
+                                            key={t.id} 
+                                            task={t} 
+                                            onToggle={onToggleTask} 
+                                            onClick={onEditTask} 
+                                            isDark={isDark} 
+                                            showProjectName={projects.find(p => p.id === t.projectId)?.name || 'Inbox'}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        </>
+                    )}
+
+                    {activeView === 'completedToday' && (
+                        <>
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-bold flex items-center gap-2">
+                                    <CheckCircle2 className="text-emerald-500" />
+                                    Victorias de Hoy
+                                </h2>
+                            </div>
+                            <div className="space-y-2">
+                                {completedTodayTasks.length === 0 ? (
+                                    <div className={`p-10 text-center rounded-2xl border border-dashed ${isDark ? 'bg-zinc-900/50 border-zinc-800 text-zinc-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                                        <Sparkles size={32} className="mx-auto mb-3 opacity-50 text-emerald-500" />
+                                        <p className="font-semibold">¡Aún no hay victorias hoy!</p>
+                                        <p className="text-sm">Completa algunas tareas para verlas aquí.</p>
+                                    </div>
+                                ) : (
+                                    completedTodayTasks.map(t => (
+                                        <TaskItem 
+                                            key={t.id} 
+                                            task={t} 
+                                            onToggle={onToggleTask} 
+                                            onClick={onEditTask} 
+                                            isDark={isDark} 
+                                            showProjectName={projects.find(p => p.id === t.projectId)?.name || 'Inbox'}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Right Panel: Data Vis */}
