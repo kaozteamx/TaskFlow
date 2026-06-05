@@ -236,7 +236,16 @@ const App = () => {
     }, [tasks, editingTask]);
 
     const completionRate = activeRootTasks.length > 0 ? Math.round((activeRootTasks.filter(t => t.completed).length / activeRootTasks.length) * 100) : 0;
-    const completedTasks = useMemo(() => activeRootTasks.filter(t => t.completed), [activeRootTasks]);
+    const completedTasks = useMemo(() => {
+        return activeRootTasks
+            .filter(t => t.completed)
+            .sort((a, b) => {
+                const timeA = safeDate(a.completedAt)?.getTime() || safeDate(a.createdAt)?.getTime() || 0;
+                const timeB = safeDate(b.completedAt)?.getTime() || safeDate(b.createdAt)?.getTime() || 0;
+                return timeB - timeA;
+            });
+    }, [activeRootTasks]);
+
 
     const executeExportTasks = (projectIds: string[], format: 'xlsx' | 'pdf') => {
         const selectedTasks = tasks.filter(t => projectIds.includes(t.projectId) && !t.completed && !t.parentTaskId).sort((a,b) => {
